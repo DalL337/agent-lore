@@ -1,0 +1,23 @@
+# Runs the suite's guard against the shipped template hub, so a malformed
+# example can't ship to adopters.
+name: memory-lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: pin to a commit SHA rather than a mutable tag before release.
+      - uses: actions/checkout@v4
+
+      # Node is preinstalled on ubuntu-latest and memory-lint.mjs is
+      # zero-dependency, so this workflow installs nothing.
+      - name: Lint the shipped template hub
+        run: node suite/scripts/memory-lint.mjs suite --strict

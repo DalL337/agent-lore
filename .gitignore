@@ -1,0 +1,5 @@
+# Agent scratch, if any tooling creates it here. Anchored with a leading
+# slash so these match only at the repository root — unanchored, `memory/`
+# would also swallow suite/memory/ (the shipped template hub).
+/memory/
+/.research/

@@ -1,0 +1,13 @@
+# LORE — append these two rules to your existing .gitignore.
+#
+# Do NOT copy this file in as your .gitignore, and do not paste these
+# without the leading slashes: an unanchored `memory/` matches at EVERY
+# level, so it would silently ignore a src/memory/ module in your own
+# source tree. The leading slash anchors each rule to your repo root.
+
+# Agent memory web — gitignored by default; owner decision to commit
+# (policies/memory.md §5). Record the decision in memory/INDEX.md.
+/memory/
+
+# Research journals — in-tree, never committed (policies/research.md)
+/.research/
