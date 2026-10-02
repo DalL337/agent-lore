@@ -1,9 +1,120 @@
 # Memory Usage Policy
 
 Scoped agent-governance procedure (AGENTS.md §1/§2). Load on first contact
-with the repository, whenever no memory web exists, and whenever reading or
-writing agent memory. This policy is the entry point to everything agents
-collectively know about this repository.
+with the repository and whenever configuring, reading, or writing its
+operational memory. Resolve the chosen entry point from AGENTS.md §5.
+
+## 0. Configured Memory
+
+> **Addendum (2026-10-02, owner-directed memory adaptation):** The bundled
+> web is an available backend. A project may instead point to existing
+> agent-native memory, a company memory system, or another approved
+> location. This section governs selection. Sections 1–7 describe the
+> bundled web; their layout, identity files, content rules, append-only
+> formatting, and git conventions apply when that backend is selected.
+
+> **Erratum (2026-10-02, owner clarification of the web):** The navigable
+> map and progressively specific rings in §§1–2 apply across storage
+> providers. The earlier qualification of §§1–7 makes their storage-specific
+> file layout, identity files, and mutation conventions conditional; it
+> does not make the web's navigation model optional.
+
+### Preserve the Navigable Rings
+
+Give agents a discoverable repository hub, then a route through categories
+that match the actual repository. The first ring names broad areas or
+concerns. Each deeper ring narrows to a subsystem, workflow, feature, or
+other working scope until the agent reaches the node that points to the
+relevant code, decisions, task evidence, and current status.
+
+For example, a route might be: repository hub → data storage → writes →
+retry behavior → the owning code and journal. The categories follow the
+repository; there is no universal taxonomy or prescribed number of rings.
+Create narrower nodes as the work and information require them, and add
+cross-links where another area matters to the current task.
+
+Keep navigation nodes small: scope, the next useful links, and concise
+status or pointers to status. Walk only the relevant branch and follow its
+references to authoritative detail. Avoid loading every ring or all stored
+memory to answer a question about one area. An agent that already knows
+the appropriate node can resume there and use parent or cross-links when
+the task broadens.
+
+This structure can live in the bundled files, a provider's categories and
+linked records, or another supported representation. If an existing
+agent/company memory cannot expose a usable walk, configure a thin
+navigation index elsewhere that points into that memory and the repository.
+The index supplies routes; the existing records retain their authority and
+content conventions. Record how the route maps to provider references or
+scoped queries in AGENTS.md §5 so another agent can follow it too.
+
+### Select the Existing Home First
+
+Before creating a memory directory or registry, read the memory
+configuration in [AGENTS.md §5](../AGENTS.md#memory-configuration), or the
+configuration document it points to. Inspect established project and
+company memory instructions. Use the selected system and its repository
+scope. If its entry point already exposes the repository web, an agent can
+orient there directly. Otherwise configure the navigation mapping or a
+thin index that leads to its records; a replacement memory module is
+unnecessary.
+
+When no choice has been made, help the owner record one. The choices are
+the bundled link web, an existing agent/company memory system, or another
+location such as a shared file, document, or service. Identify how agents
+find, read, and update the chosen home. Keep a discoverable pointer in
+AGENTS.md even when the memory itself lives elsewhere.
+
+An existing company's access, content, history, and retention conventions
+continue to govern its system. Do not replace them with the bundled web's
+folder layout or append-only file rules, migrate its records, or create a
+competing copy of its knowledge without an owner decision. A pointer index
+can provide the web's navigation while leaving those records in place.
+A later backend change is recorded in the configuration and the chosen
+decision record. The evolution process in §6 still applies, using the
+configured locations.
+
+### Keep the Repository Knowledge Findable
+
+For the repository's operational records, preserve the useful role of
+memory: find current status, the relevant artifacts, and enough dated
+context to distinguish a current decision from one it superseded. Use the
+provider's own representation for those records. Canonical code,
+documentation, and task evidence remain authoritative; memory should
+point to them and identify the status it records.
+
+An agent's memory may also hold other material under that agent's or
+company's conventions. LORE's link-web content rules describe the bundled
+module, not every record an existing provider maintains. Research detail
+continues to live in its task journal under [research policy](research.md),
+with a link or reference from the chosen memory when it supports one.
+
+### Match Coordination to Actual Visibility
+
+Check who can see the chosen records, whether they survive a session, and
+which agents can write them. Personal agent memory can aid its own
+orientation while a separate shared record handles claims and handoffs.
+Record that coordination location in AGENTS.md §5 and follow
+[orchestration policy §0](orchestration.md#0-configured-coordination).
+Do not assume a private memory, unsynced clone, or provider inaccessible to
+another agent is a shared coordination channel.
+
+When memory is unavailable or read-only, record that limit in the task
+journal and use a configured fallback when available. Continue authorized
+work that does not depend on unavailable knowledge or an unconfirmed
+claim. Do not silently manufacture another store and treat it as the
+configured source. Overlapping writes require a visible coordination
+record or explicit sequencing through the owner.
+
+### Apply the Matching Checks
+
+The bundled `scripts/memory-lint.mjs` validates the bundled web's file
+format at its supplied repository root. It does not validate an
+agent-native or external store. The project's standard check suite
+(`verification.md` Rule 1) names the applicable provider checks, if any,
+and distinguishes unchecked capabilities from verified ones. The shipped
+template guard can still check the template without making it the active
+memory backend.
 
 ## 1. What Memory Is
 

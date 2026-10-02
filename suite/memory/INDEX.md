@@ -4,6 +4,16 @@ Entry point to this repository's memory web (`policies/memory.md`).
 Every walk starts here. Append-only: strike-and-stamp deprecations,
 replacements in-slot.
 
+> **Addendum (2026-10-02, configurable memory):** This hub is the bundled
+> module's entry point. First resolve the memory configuration in AGENTS.md
+> §5; an established agent/company memory or external location can be the
+> selected home instead. Bootstrap and register here only when this web is
+> selected. A copied template is not evidence that it is the active store.
+
+> **Erratum (2026-10-02, navigation clarification):** This file is one
+> implementation of the repository hub. The same category-to-specific-node
+> walk is preserved in the chosen provider or a configured pointer index.
+
 ## Structural Decisions
 
 > **START HERE — decide this before writing anything else.**

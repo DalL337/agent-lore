@@ -112,6 +112,14 @@ everything needed to resume exists inside the journal.
 
 ## Rule 11 — Link the Journal Into the Web
 
+> **Erratum (2026-10-02, configurable memory):** Resolve the memory entry
+> point in AGENTS.md §5. The node and ledger instructions below apply to
+> the bundled web. For another provider, record the journal reference in
+> its appropriate repository area, following that provider's conventions.
+> When the provider is private or read-only, use the configured shared
+> handoff location for successor discovery. The journal remains the task's
+> detailed evidence record; a second memory module is not required.
+
 When the investigation touches an area with a memory node
 (`policies/memory.md`), append a link to the journal in that node's link
 table or ledger. The web is how a future agent *finds* the journal; a

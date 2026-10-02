@@ -14,6 +14,40 @@ place. If this unification stops fitting a project, the owner and agents
 may split the substrates; that is a structural decision recorded in the
 memory hub.
 
+## 0. Configured Coordination
+
+> **Erratum (2026-10-02, owner-directed memory adaptation):** Resolve the
+> coordination location in AGENTS.md §5 before using the web-specific
+> procedures below. Memory and coordination may share a provider or live
+> in separate places. The earlier single-web description is the bundled
+> default; a configured agent or company memory remains governed by its
+> own conventions.
+
+Use the configured shared location for sessions, scope claims, releases,
+dependencies, and handoff pointers. "Node" and "hub" refer to the web's
+logical navigation across providers; the concrete registry files and paths
+below describe the bundled implementation. Use the configured navigation
+mapping to find another provider's corresponding project area and records.
+Preserve exact claimant identity, scope, confirmation of the claim, visible
+release, and handoff evidence;
+the provider's supported representation governs the storage format.
+
+All participating agents must be able to see the same coordination state
+and confirm their claims there. Private agent memory, a read-only memory
+provider, or separate unsynced memories can still help orientation; record
+claims in the separately configured shared location. A project note or
+shared file can provide that location without a dedicated memory module.
+
+If no accessible shared location exists, sequence overlapping work through
+the owner. Do not infer another agent's agreement from a private claim.
+The configured provider's visibility and confirmation are what establish
+coordination; merely having a memory module does not establish them.
+
+> **Addendum (2026-10-02, navigation clarification):** A separate shared
+> coordination record is linked from the relevant working node in the web.
+> Walking from broad scope to specific work should reveal its claim and
+> handoff location even when that record and the memory use different stores.
+
 ## 1. Roles
 
 - **Owner** — the human. Final authority on scope disputes, merge order,
