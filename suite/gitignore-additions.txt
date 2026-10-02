@@ -1,4 +1,8 @@
-# LORE — append these two rules to your existing .gitignore.
+# LORE — append the default-location rules you use to your .gitignore.
+# Added 2026-10-02: these are the default in-repo locations. Resolve
+# AGENTS.md's memory configuration first; /memory/ is only needed when
+# using the bundled web. Adapt ignore paths for chosen local locations;
+# external or agent-native memory needs no extra memory directory.
 #
 # Do NOT copy this file in as your .gitignore, and do not paste these
 # without the leading slashes: an unanchored `memory/` matches at EVERY

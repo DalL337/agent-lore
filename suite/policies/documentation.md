@@ -16,10 +16,14 @@ don't blend scopes.
 | RFC / PRD | `docs/rfcs/`, `docs/prds/` | Early-shape proposals and product requirements. When an ADR supersedes parts of one, add a dated supersession note to the old doc — never silently rewrite it. |
 | Tooling register | `docs/TOOLING.md` | The stack and its rationale (`policies/tooling.md` §2). |
 | Research journal | `.research/<date>-<task>.md` (gitignored) | Investigation state per `policies/research.md`. Never a home for repo-facing content. |
-| Memory | `memory/**` (gitignored by default) | The link web per `policies/memory.md`. Never a home for repo-facing content. |
+| Memory | Entry point configured in AGENTS.md §5; bundled default is `memory/**` (gitignored) | Operational records per `policies/memory.md` §0; canonical repo-facing docs stay in their documented homes. |
 
 Adapt homes and naming to the project's layout on adoption — then keep
 this table true.
+
+> **Addendum (2026-10-02, configurable memory):** The memory row points
+> to the configured provider, including existing agent or company memory.
+> Its own content conventions apply; the bundled folder is optional.
 
 ## Rule 2 — Amend, Never Rewrite
 
