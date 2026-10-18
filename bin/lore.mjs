@@ -608,7 +608,9 @@ async function uninstall() {
     const stopped = await server.stopHud({ repo }).catch(() => null);
     if (stopped) console.log(`  ✓ HUD stopped (was ${stopped.url})`);
   }
-  const memory = settingsOf(main).memory?.claude;
+  const settings = settingsOf(main);
+  const memory = settings.memory?.claude;
+  const codex = Array.isArray(settings.agents) && settings.agents.includes('codex');
   let plans;
   try {
     plans = server.planUninstall({ cwd: repo, suiteDir, all });
@@ -626,8 +628,8 @@ async function uninstall() {
   if (!changed) console.log('Nothing of LORE’s to remove here.');
   else if (dryRun) console.log('Run it again without --dry-run to remove these.');
   else console.log('LORE is uninstalled.');
-  const outside = [...(memory ? [`Claude's memory folder (${memory})`] : []), "Codex's folder and hook trust (/hooks in Codex)"];
-  console.log(`Outside the repository, left alone: ${outside.join('; ')}.`);
+  const outside = [...(memory ? [`Claude's memory folder (${memory})`] : []), ...(codex ? ["Codex's folder and hook trust (/hooks in Codex)"] : [])];
+  if (outside.length) console.log(`Outside the repository, left alone: ${outside.join('; ')}.`);
 }
 
 const USAGE = `lore ${version}
