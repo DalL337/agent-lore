@@ -112,6 +112,8 @@ export interface HudMeta {
   /** false when git would show the board file as untracked (not ignored); null outside git. */
   boardIgnored: boolean | null;
   version: string;
+  /** The server's process id: how `lore hud` confirms a recorded instance is really this one. */
+  pid: number;
 }
 
 export interface GhItem {

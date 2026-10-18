@@ -7,12 +7,29 @@ current as work moves (`policies/board.md`); the page follows their edits
 live.
 
 ```
-lore hud [--repo <path>] [--data <dir>] [--port <n>] [--no-open]
+lore hud          start it in the background and open it (or reopen the one already running)
+lore hud status   is it running, and where
+lore hud stop     stop it
+lore brief        the board in a few lines, for an agent's session start
 ```
 
-It serves `http://127.0.0.1:5199` (the next free port if that one is
-taken) and opens the browser. `lore brief` prints the same board as a few
-lines for an agent's session start.
+Options: `--repo <path>` (default: the current folder), `--data <dir>`,
+`--port <n>`, `--no-open`, and `--foreground` to keep the HUD in the
+terminal (Ctrl+C stops it).
+
+- **One per repository.** A running HUD records itself in
+  `<data>/hud.json`; `lore hud` reopens it instead of starting a second.
+  The record is trusted only when the server at its address confirms its
+  process id. The background server logs to `<data>/hud.log`.
+- **A stable address.** Each repository gets its own port in 5200–5999,
+  derived from where it lives, so its address can be bookmarked. Set
+  `"port"` in `config.json` to choose one; `--port` overrides both (exact).
+- **The board's title** is `"name"` from `config.json`, else the git
+  remote's repository name, else the folder name.
+- **Worktrees share one board.** LORE's private files (the board, the
+  journals, an untracked `lore/` folder) exist only in the main checkout,
+  so the HUD resolves them there from any linked worktree; branch and
+  status come from the worktree it was started in.
 
 `--data <dir>` keeps the board and settings in a folder outside the
 repository instead of `<repo>/.lore/`. The repository is then only read:
@@ -24,8 +41,9 @@ without adding anything to it.
 
 | | Where | Notes |
 |---|---|---|
-| Board | `<repo>/.lore/board.json` (or `<data>/board.json`) | Created on first run. Private: keep `/.lore/` out of git (`.git/info/exclude`). |
-| Settings | `<repo>/.lore/config.json` (or `<data>/config.json`) | Optional: `{ "journals": ".research", "policies": "lore/policies" }`; relative paths resolve against the repository. |
+| Board | `<repo>/.lore/board.json` in the main checkout (or `<data>/board.json`) | Created on first run. Private: keep `/.lore/` out of git (`.git/info/exclude`). |
+| Settings | `<repo>/.lore/config.json` (or `<data>/config.json`) | Optional: `{ "name": "…", "journals": ".research", "policies": "lore/policies", "port": 5231 }`; relative paths resolve against the main checkout. |
+| Running instance | `<data>/hud.json`, `<data>/hud.log` | Written by the HUD while it runs; removed by `lore hud stop`. |
 | Journals | `<repo>/.research/*.md` | Read only; the HUD never edits a journal. |
 | Policies | `lore/policies/`, else `policies/` | Names for the journal policy tags; `research-policy.md` reads as `research`. |
 | GitHub | `gh` CLI, if installed and logged in | Open PRs and issues, recent merges, the latest release. Optional. |
