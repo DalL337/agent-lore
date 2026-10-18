@@ -16,7 +16,8 @@ import { createJournalIndex } from './journals.ts';
 import { createRepoState } from './repo.ts';
 
 export { getJson, resolveConfig, type HudConfig, type HudInstance };
-export { applyPlan, checkRepo, describePlan, InitError, pending, planInit, type InitPlan } from './init.ts';
+export { applyPlan, checkouts, checkRepo, describePlan, InitError, locate, pending, planInit, planWorktree, suiteDrift, type InitPlan } from './init.ts';
+export { planUninstall } from './uninstall.ts';
 export { AGENT_IDS, AGENT_NAMES, detectAgents, isAgentId, onPath } from './agents.ts';
 
 export interface StartOptions {
@@ -139,6 +140,13 @@ export async function brief(options: { repo: string; data?: string; cli?: string
   const config = resolveConfig(options.repo, options.data);
   const { board: store, journals, meta } = services(config, 'brief');
   const m = meta();
+  // In a linked worktree, LORE's files are in the main checkout: name them by absolute path.
+  if (path.resolve(config.repoRoot) !== path.resolve(config.mainRoot)) {
+    const abs = (p: string) => path.resolve(config.mainRoot, p).split(path.sep).join('/');
+    m.boardFile = abs(m.boardFile);
+    m.journals = abs(m.journals);
+    m.policies = m.policies.map((p) => ({ ...p, path: abs(p.path) }));
+  }
   const hud = `${options.cli ?? 'lore'} hud`;
   const out = [`=== LORE board · ${m.repo} (${m.boardFile} · \`${hud}\` to open it) ===`];
 

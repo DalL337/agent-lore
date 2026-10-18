@@ -4,8 +4,11 @@
 //   lore init       [--repo <path>] [--dry-run] [--commit] [--agents <list>] [--yes]
 //   lore sync       [--repo <path>] [--dry-run]
 //   lore check      [--repo <path>]
+//   lore update     [--repo <path>] [--dry-run]
+//   lore uninstall  [--repo <path>] [--dry-run] [--all [--yes]]
 //   lore connect    [claude|codex] [--repo <path>]
 //   lore memory     seed|check <memory-dir> [--repo <path>]
+//   lore worktree   [--hook <old> <new> <flag>]   (the post-checkout git hook)
 //   lore hud        [--repo <path>] [--data <dir>] [--port <n>] [--no-open] [--foreground]
 //   lore hud status [--repo <path>] [--data <dir>]
 //   lore hud stop   [--repo <path>] [--data <dir>]
@@ -39,10 +42,24 @@ if (Number(process.versions.node.split('.')[0]) < 20) {
   process.exit(1);
 }
 const sub = command === 'hud' && (args[0] === 'stop' || args[0] === 'status') ? args[0] : null;
-// How an agent can run LORE again here: through the repository's launcher
-// when that is how this started (`lore` may not be on PATH).
-const cli = /[\\/]\.lore[\\/]lore\.mjs$/.test(process.argv[1] ?? '') ? 'node .lore/lore.mjs' : 'lore';
+const viaLauncher = /[\\/]\.lore[\\/]lore\.mjs$/.test(process.argv[1] ?? '');
 const hudLauncher = process.platform === 'win32' ? '.lore\\hud' : '.lore/hud';
+const slashed = (p) => p.split(path.sep).join('/');
+
+/**
+ * How an agent can run LORE again here: through the repository's launcher
+ * when that is how this started (`lore` may not be on PATH), by absolute
+ * path from a linked worktree, which has no .lore/ of its own.
+ */
+function cliFor(server, repo) {
+  if (!viaLauncher) return 'lore';
+  try {
+    const { here, main } = server.locate(repo);
+    return here === main ? 'node .lore/lore.mjs' : `node "${slashed(main)}/.lore/lore.mjs"`;
+  } catch {
+    return 'node .lore/lore.mjs';
+  }
+}
 
 const VALUED = new Set(['--repo', '--data', '--port', '--agents', '--agent']);
 const positionals = args.filter((a, i) => !a.startsWith('--') && !VALUED.has(args[i - 1]));
@@ -323,7 +340,17 @@ async function install(sync) {
     const defaultAgent = await askDefault(server, planned.agents);
     planned = plan(server, { commit: flag('--commit'), agents: ids, defaultAgent });
   }
-  const changed = carryOut(server, planned);
+  let changed = carryOut(server, planned);
+  // Linked worktrees: sync refreshes them all; init sets up the one it ran in
+  // (git's hook does the ones made from now on).
+  const { here } = server.locate(target().repo);
+  const dirs = sync ? server.checkouts(planned.main).slice(1) : here !== planned.main && !(dryRun && !planned.installed) ? [here] : [];
+  const next = [...planned.next];
+  changed =
+    eachWorktree(server, planned.main, dirs, (wt) => {
+      next.push(...wt.next.filter((n) => !next.includes(n)));
+      return carryOut(server, wt);
+    }) || changed;
   if (!changed) console.log(sync ? 'Everything LORE generates is current.' : 'Already set up: nothing changed.');
   else if (dryRun) console.log('Run it again without --dry-run to make these changes.');
   else if (sync) console.log('Synced.');
@@ -341,7 +368,7 @@ async function install(sync) {
       console.log('Agents: none found (Claude Code, Codex). `lore connect claude` or `lore connect codex` wires one later.');
     }
   }
-  if (changed && !dryRun) for (const step of planned.next) console.log(`Then: ${step}`);
+  if (changed && !dryRun) for (const step of next) console.log(`Then: ${step}`);
   if (changed && !dryRun && !sync) {
     console.log(`Next: adapt lore/LORE.md and lore/policies/ to this repository (then \`lore sync\`); \`${hudLauncher}\` opens the board.`);
   }
@@ -431,11 +458,26 @@ async function session() {
   const server = await loadServer();
   const { repo } = target();
   const notes = [];
+  const refresh = (planned, where = '') => {
+    if (!server.pending(planned)) return;
+    server.applyPlan(planned);
+    notes.push(`LORE regenerated ${where}${changedPaths(planned).join(', ')} to match lore/LORE.md and the repository.`);
+  };
   try {
-    const planned = server.planInit({ cwd: repo, suiteDir, packageDir: root, sync: true });
-    if (server.pending(planned)) {
-      server.applyPlan(planned);
-      notes.push(`LORE regenerated ${changedPaths(planned).join(', ')} to match lore/LORE.md and the repository.`);
+    refresh(server.planInit({ cwd: repo, suiteDir, packageDir: root, sync: true }));
+    const { here, main } = server.locate(repo);
+    if (here !== main) {
+      refresh(server.planWorktree({ cwd: here }), 'in this worktree ');
+    } else {
+      // Worktrees git made without LORE's hook (core.hooksPath, or made before it) get set up here.
+      for (const dir of server.checkouts(main).slice(1)) {
+        if (existsSync(path.join(dir, 'lore', 'LORE.md'))) continue;
+        try {
+          refresh(server.planWorktree({ cwd: dir }), `the worktree ${slashed(path.relative(main, dir))}: `);
+        } catch {
+          // not ours to set up (its own lore/, or not a worktree any more)
+        }
+      }
     }
   } catch (err) {
     if (!(err instanceof server.InitError)) notes.push(`LORE could not refresh its files: ${err.message}`);
@@ -447,11 +489,145 @@ async function session() {
     notes.push(`The HUD did not start: ${err.message.split('\n')[0]}`);
   }
   try {
-    console.log(await server.brief({ repo, cli }));
+    console.log(await server.brief({ repo, cli: cliFor(server, repo) }));
   } catch (err) {
     console.log(`LORE board brief unavailable: ${err.message}`);
   }
   for (const note of notes) console.log(note);
+}
+
+/** The linked worktrees' plans, one by one (a worktree LORE can't set up says why). */
+function eachWorktree(server, main, dirs, run) {
+  let changed = false;
+  for (const dir of dirs) {
+    const name = slashed(path.relative(main, dir));
+    let planned;
+    try {
+      planned = server.planWorktree({ cwd: dir });
+    } catch (err) {
+      console.log(`Worktree ${name}: ${err.message}`);
+      continue;
+    }
+    console.log(`Worktree ${name}:`);
+    changed = run(planned) || changed;
+  }
+  return changed;
+}
+
+/**
+ * `lore worktree`: set up the linked worktree this runs in. The git hook runs
+ * it as `lore worktree --hook <old HEAD> <new HEAD> <1 for a branch checkout>`
+ * after git makes a worktree or checks out a branch; then it is quiet, and
+ * does nothing in the main checkout or when LORE isn't installed.
+ */
+async function worktree() {
+  // A hook's environment points git at the checkout that ran it; LORE's own git calls look up others.
+  for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_PREFIX', 'GIT_COMMON_DIR']) delete process.env[name];
+  const server = await loadServer();
+  const hook = flag('--hook');
+  if (hook && positionals[2] === '0') return; // a file checkout, not a branch
+  let planned;
+  try {
+    planned = server.planWorktree({ cwd: target().repo });
+  } catch (err) {
+    if (hook) return;
+    fail(err.message);
+  }
+  if (hook) {
+    if (!server.pending(planned)) return;
+    server.applyPlan(planned);
+    console.log(`LORE: this worktree is set up; agents here read LORE from ${slashed(planned.main)}.${planned.next.length ? ' Codex: trust this folder and its hook (/hooks) once.' : ''}`);
+    return;
+  }
+  console.log(`LORE ${version} · worktree · ${slashed(planned.root)}`);
+  const changed = carryOut(server, planned);
+  console.log(changed ? 'This worktree is set up.' : 'This worktree is current.');
+  if (changed) for (const step of planned.next) console.log(`Then: ${step}`);
+}
+
+/**
+ * `lore update`, run by a newer LORE (`npx @dall337/lore@latest update`):
+ * the runtime, launchers, generated files and hooks, in every checkout. The
+ * owner's lore/ is left as it is; what the new suite has that it doesn't is
+ * listed.
+ */
+async function update() {
+  const server = await loadServer();
+  const repo = target().repo;
+  const planned = plan(server, { sync: true });
+  const own = path.resolve(root) === path.resolve(planned.main, '.lore', 'runtime');
+  console.log(`LORE ${version} · update · ${nameOf(server, planned.root)}${flag('--dry-run') ? ' · dry run: nothing is written' : ''}`);
+  if (own) console.log('  note  this is the repository’s own copy of LORE (.lore/runtime/); to upgrade it, run `npx @dall337/lore@latest update`');
+  const runtimeChanged = planned.changes.some((c) => c.group === '.lore/runtime/' && c.kind !== 'unchanged');
+  let changed = carryOut(server, planned);
+  changed = eachWorktree(server, planned.main, server.checkouts(planned.main).slice(1), (wt) => carryOut(server, wt)) || changed;
+
+  // A running HUD still runs the old code: restart it on the new one.
+  if (runtimeChanged && !flag('--dry-run')) {
+    const { live } = await server.findHud({ repo }).catch(() => ({ live: null }));
+    if (live) {
+      await server.stopHud({ repo });
+      const started = await startBackground({ repo, waitMs: 6000 }).catch(() => null);
+      console.log(started?.live ? `HUD restarted on LORE ${version} → ${started.live.url}` : 'HUD stopped; `lore hud` starts it again.');
+    }
+  }
+  const drift = server.suiteDrift(planned.main, suiteDir);
+  if (drift.differ.length || drift.missing.length) {
+    const missing = drift.missing.length ? ` and ${drift.missing.length} of its files are not in lore/ (${drift.missing.slice(0, 3).join(', ')}${drift.missing.length > 3 ? ', …' : ''})` : '';
+    console.log(`lore/ is yours, so update leaves it: ${drift.differ.length} file(s) differ from LORE ${version}'s suite${missing}. Compare with ${slashed(suiteDir)}.`);
+  }
+  console.log(changed ? (flag('--dry-run') ? 'Run it again without --dry-run to make these changes.' : 'Updated.') : 'Everything LORE generates is current.');
+}
+
+/**
+ * `lore uninstall`: remove what init added (hud/server/uninstall.ts). The
+ * owner's adapted lore/ and board stay unless --all, which asks first.
+ */
+async function uninstall() {
+  const server = await loadServer();
+  const repo = target().repo;
+  const all = flag('--all');
+  const dryRun = flag('--dry-run');
+  let main;
+  try {
+    ({ main } = server.locate(repo));
+  } catch (err) {
+    fail(err.message);
+  }
+  if (all && !dryRun && !flag('--yes')) {
+    if (!process.stdin.isTTY) fail('--all also deletes your adapted lore/ and the board (.lore/board.json); add --yes to confirm. Journals are never deleted.');
+    const { createInterface } = await import('node:readline/promises');
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await rl.question('? --all also deletes your adapted lore/ and the board (.lore/board.json). Journals stay. Type "yes" to go on: ');
+    rl.close();
+    if (answer.trim().toLowerCase() !== 'yes') fail('nothing removed.');
+  }
+  console.log(`LORE ${version} · uninstall · ${nameOf(server, main)}${dryRun ? ' · dry run: nothing is removed' : ''}`);
+  // The HUD runs from .lore/runtime/: stop it first.
+  if (!dryRun) {
+    const stopped = await server.stopHud({ repo }).catch(() => null);
+    if (stopped) console.log(`  ✓ HUD stopped (was ${stopped.url})`);
+  }
+  const memory = settingsOf(main).memory?.claude;
+  let plans;
+  try {
+    plans = server.planUninstall({ cwd: repo, suiteDir, all });
+  } catch (err) {
+    fail(err.message);
+  }
+  let changed = false;
+  for (const [i, planned] of plans.entries()) {
+    if (i > 0) {
+      if (!server.pending(planned)) continue;
+      console.log(`Worktree ${slashed(path.relative(main, planned.root))}:`);
+    }
+    changed = carryOut(server, planned) || changed;
+  }
+  if (!changed) console.log('Nothing of LORE’s to remove here.');
+  else if (dryRun) console.log('Run it again without --dry-run to remove these.');
+  else console.log('LORE is uninstalled.');
+  const outside = [...(memory ? [`Claude's memory folder (${memory})`] : []), "Codex's folder and hook trust (/hooks in Codex)"];
+  console.log(`Outside the repository, left alone: ${outside.join('; ')}.`);
 }
 
 const USAGE = `lore ${version}
@@ -459,8 +635,11 @@ const USAGE = `lore ${version}
   lore init       install LORE in this repository, privately, and wire the agents it finds
   lore sync       regenerate the files LORE generates, after editing lore/LORE.md
   lore check      report generated files that are missing or stale (exit 1)
+  lore update     refresh LORE's runtime and generated files: run the new version (npx @dall337/lore@latest update)
+  lore uninstall  remove what init added; keeps your adapted lore/ and board unless --all (journals always stay)
   lore connect    wire an agent: lore connect claude · lore connect codex (alone: which are wired)
   lore memory     lore memory seed <dir>: shape Claude Code's memory folder as LORE's hub (check: verify it)
+  lore worktree   set up the linked worktree you're in (git's hook does this for new ones)
   lore hud        open the HUD for a repository (starts it in the background, or reopens it)
   lore hud status say whether this repository's HUD is running, and where
   lore hud stop   stop it
@@ -470,7 +649,8 @@ const USAGE = `lore ${version}
   --dry-run      init, sync: list what would change and write nothing
   --commit       init: share lore/ through the repository (rules in .gitignore, not .git/info/exclude)
   --agents <ids> init: wire exactly these (claude,codex or none) instead of looking for them
-  --yes          init: take the defaults without asking
+  --yes          init: take the defaults without asking · uninstall --all: don't ask
+  --all          uninstall: also your adapted lore/ and the board (never journals)
   --data <dir>   keep the board and settings outside the repository (default <main checkout>/.lore)
   --port <n>     exact port (default: the repository's own stable port)
   --no-open      don't open the browser
@@ -486,6 +666,12 @@ if (command === 'init' || command === 'sync') {
   await memory();
 } else if (command === 'session') {
   await session();
+} else if (command === 'worktree') {
+  await worktree();
+} else if (command === 'update') {
+  await update();
+} else if (command === 'uninstall') {
+  await uninstall();
 } else if (command === 'hud' && sub === 'status') {
   await status();
 } else if (command === 'hud' && sub === 'stop') {
@@ -496,7 +682,7 @@ if (command === 'init' || command === 'sync') {
   const { brief } = await loadServer();
   // A brief must never block a session: report and exit 0.
   try {
-    console.log(await brief({ ...target(), cli }));
+    console.log(await brief({ ...target(), cli: cliFor(await loadServer(), target().repo) }));
   } catch (err) {
     console.log(`LORE board brief unavailable: ${err.message}`);
   }

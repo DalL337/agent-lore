@@ -273,13 +273,15 @@ test('when the project later commits an AGENTS.md, sync moves LORE aside and rem
   assert.equal(pending(planInit({ cwd: dir, suiteDir: SUITE })), false);
 });
 
-test('--commit: lore/ is left for the owner to commit; the private rules go in .gitignore, and the choice sticks', async () => {
+test('--commit: lore/ is left for the owner to commit; the private rules go in .gitignore too, and the choice sticks', async () => {
   const dir = await repo({ '.gitignore': 'node_modules/\n' });
   run(dir); // private first, then switch
   const plan = run(dir, { commit: true });
   assert.equal(plan.commit, true);
-  assert.equal(kinds(plan)['.git/info/exclude'], 'update', "the private block leaves .git/info/exclude");
-  assert.doesNotMatch(await exclude(dir), /LORE/);
+  assert.equal(kinds(plan)['.git/info/exclude'], 'update', 'lore/ comes out of the shared exclude block');
+  const local = await exclude(dir);
+  assert.doesNotMatch(local, /^\/lore\/$/m);
+  assert.match(local, /^\/\.lore\/$/m, 'every checkout stays covered, whatever its branch’s .gitignore says');
   const gitignore = await read(dir, '.gitignore');
   assert.ok(gitignore.startsWith('node_modules/\n\n# >>> LORE'));
   assert.doesNotMatch(gitignore, /^\/lore\/$/m);

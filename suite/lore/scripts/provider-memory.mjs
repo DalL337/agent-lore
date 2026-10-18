@@ -10,10 +10,11 @@
 //   init  <memory-dir> [--repo <root>]   seed the hub and missing areas;
 //                                        never overwrites an existing file
 //   check <memory-dir> [--repo <root>] [--strict]
-//   hook                                 Claude Code PostToolUse mode: reads
+//   hook [--repo <root>]                 Claude Code PostToolUse mode: reads
 //                                        the hook payload on stdin and checks
 //                                        the memory directory a Write or Edit
-//                                        touched (claude-settings-additions.json)
+//                                        touched (claude-settings-additions.json);
+//                                        --repo defaults to CLAUDE_PROJECT_DIR
 //
 // Checks:
 //   E1  the hub (MEMORY.md) is missing
@@ -278,7 +279,9 @@ async function hook() {
   const relocated = process.env.LORE_PROVIDER_MEMORY_DIR;
   if (!PROVIDER_DIR.test(dir) && !(relocated && resolve(relocated) === dir)) return 0;
 
-  const result = check(dir, process.env.CLAUDE_PROJECT_DIR || input.cwd || '.', basename(file));
+  // --repo: the main checkout, for a session in a linked worktree (which has no lore/policies/ of its own).
+  const repo = repoAt >= 0 ? rest[repoAt + 1] : process.env.CLAUDE_PROJECT_DIR || input.cwd || '.';
+  const result = check(dir, repo, basename(file));
   if (result.errors.length === 0 && result.warnings.length === 0) return 0;
   console.error(`provider-memory: ${dir}`);
   report(result);

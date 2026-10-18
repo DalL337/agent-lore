@@ -4,7 +4,8 @@
 // (npm run build).
 
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { appendFile, cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -207,5 +208,62 @@ try {
   if (sessionPid && alive(sessionPid)) process.kill(sessionPid);
   await rm(wired, { recursive: true, force: true }).catch(() => {});
   await rm(memoryDir, { recursive: true, force: true }).catch(() => {});
+}
+
+// Worktrees through git's own hook, update, and uninstall back to exactly where it started.
+const fresh = await mkdtemp(path.join(tmpdir(), 'lore-uninstall-e2e-'));
+const branch = `${fresh}-feature`;
+let worktreePid = null;
+/** Every file (with a hash) and folder, .git/info and .git/hooks included. */
+const snapshot = (dir) => {
+  const out = {};
+  const visit = (rel) => {
+    for (const name of readdirSync(path.join(dir, rel)).sort()) {
+      const child = rel ? `${rel}/${name}` : name;
+      if (child === '.git') {
+        for (const sub of ['info', 'hooks']) visit(`.git/${sub}`);
+      } else if (statSync(path.join(dir, child)).isDirectory()) {
+        out[`${child}/`] = 'folder';
+        visit(child);
+      } else {
+        out[child] = createHash('sha1').update(readFileSync(path.join(dir, child))).digest('hex');
+      }
+    }
+  };
+  visit('');
+  return JSON.stringify(out);
+};
+try {
+  const gitAt = (cwd, ...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.test', '-c', 'core.autocrlf=false', ...a], { cwd, encoding: 'utf8' });
+  gitAt(fresh, 'init', '-q', '-b', 'main');
+  await writeFile(path.join(fresh, 'README.md'), '# app\n');
+  gitAt(fresh, 'add', '-A');
+  gitAt(fresh, 'commit', '-q', '-m', 'init');
+  const before = snapshot(fresh);
+
+  run(fresh, 'init', '--agents', 'claude,codex', '--yes');
+  const added = gitAt(fresh, 'worktree', 'add', '-b', 'feature', branch);
+  const copy = await readFile(path.join(branch, 'lore', 'LORE.md'), 'utf8').catch(() => '');
+  check(
+    'git worktree add: LORE’s hook sets the worktree up, pointing at the main checkout',
+    copy.includes(`${fresh.split(path.sep).join('/')}/lore/policies/`) && existsSync(path.join(branch, '.claude', 'settings.local.json')) && gitAt(branch, 'status', '--porcelain', '--untracked-files=all') === '',
+    added.split('\n').find((l) => l.startsWith('LORE')) ?? '',
+  );
+  const inWorktree = spawnSync(process.execPath, [path.join(fresh, '.lore', 'lore.mjs'), 'session', '--agent', 'claude', '--repo', branch], { cwd: branch, encoding: 'utf8', env: { ...process.env, CI: '' } });
+  worktreePid = JSON.parse(await readFile(path.join(fresh, '.lore', 'hud.json'), 'utf8').catch(() => 'null'))?.pid ?? null;
+  check('a session in the worktree: the brief names the main checkout’s board by absolute path', inWorktree.stdout.includes(`${fresh.split(path.sep).join('/')}/.lore/board.json`), inWorktree.stdout.split('\n')[0]);
+  const updated = run(fresh, 'update');
+  check('lore update: everything current', updated.code === 0 && /Everything LORE generates is current/.test(updated.out), updated.code === 0 ? '' : updated.out);
+
+  const removed = run(fresh, 'uninstall');
+  check('lore uninstall stops the HUD and empties the worktree of LORE', removed.code === 0 && (!worktreePid || !alive(worktreePid)) && gitAt(branch, 'status', '--porcelain', '--untracked-files=all') === '', removed.code === 0 ? '' : removed.out);
+  gitAt(fresh, 'worktree', 'remove', branch);
+  check('…and the repository is byte for byte as it was before lore init', snapshot(fresh) === before);
+} catch (err) {
+  check('uninstall run', false, err.message);
+} finally {
+  if (worktreePid && alive(worktreePid)) process.kill(worktreePid);
+  await rm(branch, { recursive: true, force: true }).catch(() => {});
+  await rm(fresh, { recursive: true, force: true }).catch(() => {});
 }
 process.exit(results.every(Boolean) ? 0 : 1);
