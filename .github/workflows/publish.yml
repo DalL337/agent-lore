@@ -1,0 +1,41 @@
+# Publishes @dall337/lore to npm when a GitHub Release is published.
+#
+# No stored token: npm trusted publishing (OIDC) authorizes this workflow,
+# and npm attaches a provenance attestation automatically. One-time setup on
+# npmjs.com, after the first (manual) publish: the package's Settings →
+# Trusted Publisher → GitHub Actions, user DalL337, repository agent-lore,
+# workflow publish.yml. Then set publishing access to "Require two-factor
+# authentication and disallow tokens".
+name: publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: pin to commit SHAs rather than mutable tags before release.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: The release tag matches package.json
+        run: |
+          expected="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "Release tag $GITHUB_REF_NAME does not match package.json ($expected)"; exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # prepack builds the HUD into the package.
+      - run: npm publish

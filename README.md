@@ -19,6 +19,24 @@ rules govern actual work. **Rules** — earned through incidents and
 ratified by the owner. **Evidence** — provenance, journals, ledgers,
 registers, and guards.
 
+## Try it
+
+LORE's command line ships as an npm package (Node 20+):
+
+```sh
+npx @dall337/lore hud     # open the HUD for the repository in this folder
+npm i -g @dall337/lore    # or install it, then: lore hud · lore hud status · lore hud stop · lore brief
+```
+
+`lore hud` runs a local, private page for the repository: its board, its
+research journals, and its open GitHub work (see [The HUD](#the-hud)).
+Add `--data <folder>` to keep the board outside the repository and leave
+the repository untouched while you try it.
+
+*Early release (0.1).* `lore init`, which sets LORE up in a repository in
+one command, is next. Until then, adopt the suite by copying it, as
+described under [Adopting](#adopting).
+
 ## Where this came from
 
 LORE was not designed up front. It accumulated — rule by rule, on a
