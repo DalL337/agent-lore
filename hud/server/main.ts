@@ -1,5 +1,6 @@
 // Entry points for the `lore` CLI: `startHud` serves the HUD for one
-// repository; `brief` prints the board summary agents see at session start.
+// repository; `brief` prints the board summary agents see at session start;
+// init.ts installs LORE (`lore init`, `lore sync`, `lore check`).
 
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -15,6 +16,7 @@ import { createJournalIndex } from './journals.ts';
 import { createRepoState } from './repo.ts';
 
 export { getJson, resolveConfig, type HudConfig, type HudInstance };
+export { applyPlan, checkRepo, describePlan, InitError, pending, planInit, type InitPlan } from './init.ts';
 
 export interface StartOptions {
   repo: string;

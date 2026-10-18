@@ -1,16 +1,22 @@
 #!/usr/bin/env node
 // lore — LORE's command line.
 //
+//   lore init       [--repo <path>] [--dry-run] [--commit] [--yes]
+//   lore sync       [--repo <path>] [--dry-run]
+//   lore check      [--repo <path>]
 //   lore hud        [--repo <path>] [--data <dir>] [--port <n>] [--no-open] [--foreground]
 //   lore hud status [--repo <path>] [--data <dir>]
 //   lore hud stop   [--repo <path>] [--data <dir>]
 //   lore brief      [--repo <path>] [--data <dir>]
 //
+// `lore init` installs LORE into the repository, privately (see
+// hud/server/init.ts); `lore sync` regenerates what it generated after
+// lore/LORE.md changes; `lore check` reports drift and exits 1.
 // `lore hud` runs the HUD in the background (one per repository) and opens
 // it; run again, it reopens the one already running. --foreground keeps it
 // in this terminal instead. --data keeps the board and settings in a folder
 // outside the repository, so the HUD only reads the repository.
-// The HUD runs from its prebuilt files in hud/dist (npm run build).
+// The commands run from the prebuilt files in hud/dist (npm run build).
 
 import { spawn } from 'node:child_process';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, truncateSync, writeSync } from 'node:fs';
@@ -20,7 +26,12 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const self = fileURLToPath(import.meta.url);
 const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const suiteDir = path.join(root, 'suite', 'lore');
 const [command, ...args] = process.argv.slice(2);
+if (Number(process.versions.node.split('.')[0]) < 20) {
+  console.error(`lore: needs Node 20 or later (this is ${process.version})`);
+  process.exit(1);
+}
 const sub = command === 'hud' && (args[0] === 'stop' || args[0] === 'status') ? args[0] : null;
 
 const flag = (name) => args.includes(name);
@@ -151,20 +162,89 @@ async function stop() {
   console.log(stopped ? `LORE HUD · ${config.repoName}: stopped (was ${stopped.url}, pid ${stopped.pid}).` : `LORE HUD · ${config.repoName}: was not running.`);
 }
 
+function nameOf(server, dir) {
+  try {
+    return server.resolveConfig(dir).repoName;
+  } catch {
+    return path.basename(dir);
+  }
+}
+
+/** `lore init`, or `lore sync` (regenerate only). Nothing here prompts yet, so --yes is accepted and changes nothing. */
+async function install(sync) {
+  const server = await loadServer();
+  const dryRun = flag('--dry-run');
+  let plan;
+  try {
+    plan = server.planInit({ cwd: target().repo, suiteDir, commit: flag('--commit'), sync });
+  } catch (err) {
+    fail(err.message);
+  }
+  console.log(`LORE ${version} · ${sync ? 'sync' : 'init'} · ${nameOf(server, plan.root)}${dryRun ? ' · dry run: nothing is written' : ''}`);
+  for (const line of server.describePlan(plan, dryRun)) console.log(line);
+  const changed = server.pending(plan);
+  if (changed && !dryRun) server.applyPlan(plan);
+  console.log('');
+  if (!changed) console.log(sync ? 'Everything LORE generates is current.' : 'Already set up: nothing changed.');
+  else if (dryRun) console.log('Run it again without --dry-run to make these changes.');
+  else if (sync) console.log('Synced.');
+  else {
+    console.log(
+      plan.commit
+        ? 'Shared: lore/ and the .gitignore block are yours to commit; the board, journals and generated files stay private.'
+        : 'Private: none of it shows in git status. `lore init --commit` shares lore/ through the repository instead.',
+    );
+    console.log('Next: adapt lore/LORE.md and lore/policies/ to this repository (then `lore sync`); `lore hud` opens the board.');
+  }
+}
+
+async function check() {
+  const server = await loadServer();
+  let result;
+  try {
+    result = server.checkRepo({ cwd: target().repo, suiteDir });
+  } catch (err) {
+    fail(err.message);
+  }
+  const name = nameOf(server, result.root);
+  const failed = result.problems.length > 0 || result.visible.length > 0;
+  if (!failed && !result.warnings.length) {
+    console.log(`LORE ${version} · check · ${name}: everything LORE generates is current, and git ignores LORE's private files.`);
+    return;
+  }
+  console.log(`LORE ${version} · check · ${name}`);
+  for (const problem of result.problems) console.log(`  ✗ ${problem}`);
+  if (result.visible.length) {
+    const some = result.visible.slice(0, 3).join(', ') + (result.visible.length > 3 ? `, +${result.visible.length - 3}` : '');
+    console.log(`  ✗ git would show ${result.visible.length} of LORE's private files (${some}); \`lore sync\` restores LORE's ignore rules`);
+  }
+  for (const warning of result.warnings) console.log(`  ! ${warning}`);
+  if (failed) process.exit(1);
+}
+
 const USAGE = `lore ${version}
 
+  lore init       install LORE in this repository, privately (nothing shows in git status)
+  lore sync       regenerate the files LORE generates, after editing lore/LORE.md
+  lore check      report generated files that are missing or stale (exit 1)
   lore hud        open the HUD for a repository (starts it in the background, or reopens it)
   lore hud status say whether this repository's HUD is running, and where
   lore hud stop   stop it
   lore brief      print the board summary for an agent
 
   --repo <path>   the repository (default: the current folder)
+  --dry-run      init, sync: list what would change and write nothing
+  --commit       init: share lore/ through the repository (rules in .gitignore, not .git/info/exclude)
   --data <dir>   keep the board and settings outside the repository (default <main checkout>/.lore)
   --port <n>     exact port (default: the repository's own stable port)
   --no-open      don't open the browser
   --foreground   keep the HUD in this terminal (Ctrl+C stops it)`;
 
-if (command === 'hud' && sub === 'status') {
+if (command === 'init' || command === 'sync') {
+  await install(command === 'sync');
+} else if (command === 'check') {
+  await check();
+} else if (command === 'hud' && sub === 'status') {
   await status();
 } else if (command === 'hud' && sub === 'stop') {
   await stop();
