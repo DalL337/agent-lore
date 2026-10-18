@@ -13,6 +13,10 @@
 //
 //   { "name": "Litria", "journals": ".research", "policies": "lore/policies", "port": 5231 }
 //
+// `lore init` also keeps the agents it wired there ("agents", "agent" for
+// the default, "memory"), and "autostart": false stops the agents' session
+// hooks starting the HUD.
+//
 // Relative paths there resolve against the main checkout.
 
 import { execFileSync } from 'node:child_process';
@@ -35,6 +39,8 @@ export interface HudConfig {
   policiesDir: string | null;
   /** Port from config.json, if the owner set one. */
   port: number | null;
+  /** Start the HUD from the agents' session hooks (config.json "autostart"; on unless false). */
+  autostart: boolean;
 }
 
 interface ConfigFile {
@@ -42,6 +48,7 @@ interface ConfigFile {
   journals?: unknown;
   policies?: unknown;
   port?: unknown;
+  autostart?: unknown;
 }
 
 // LORE's installed layout first, then the older copy-into-root layout, then
@@ -133,6 +140,7 @@ export function resolveConfig(repo: string, data?: string): HudConfig {
     journalsDir: pick(file.journals) ?? path.join(mainRoot, '.research'),
     policiesDir,
     port,
+    autostart: file.autostart !== false,
   };
 }
 

@@ -26,9 +26,17 @@
 // A file counts as LORE's ("ours") when it starts with LORE's header and git
 // does not track it. Ours are regenerated, and removed when no longer needed;
 // anything else is the owner's and is only ever given a marked block.
+//
+// Given the package it runs from, init also fills .lore/: a copy of that
+// package in .lore/runtime/ (so hooks work with no global install and no
+// network), the .lore/lore.mjs launcher the hooks call, .lore/hud for the
+// owner, and config.json with the agents it wired. Each wired agent gets a
+// session hook (agents.ts) that prints the board brief, starts the HUD and
+// keeps these files current.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { AGENT_IDS, claudeHooks, codexHooks, hasLoreHooks, isAgentId, mergeHooks, type AgentId, type HookEvents } from './agents.ts';
 import { git, mainWorktree } from './config.ts';
 
 export interface InitOptions {
@@ -44,6 +52,18 @@ export interface InitOptions {
   commit?: boolean;
   /** `lore sync`: regenerate only; requires an installed lore/ and copies nothing. */
   sync?: boolean;
+  /**
+   * The LORE package running this (holding bin/, suite/ and hud/dist/):
+   * copied to .lore/runtime/, with the launchers. Without it, .lore/ is
+   * left alone.
+   */
+  packageDir?: string;
+  /** Agents to wire, added to those config.json lists. Without it, the ones config.json lists. */
+  agents?: AgentId[];
+  /** The default agent (the one the hand-off opens), recorded in config.json. */
+  defaultAgent?: AgentId;
+  /** Claude's memory folder, once seeded (`lore memory seed`): turns on the memory guard hook. */
+  claudeMemory?: string;
 }
 
 export type ChangeKind = 'create' | 'update' | 'remove' | 'unchanged' | 'skipped';
@@ -55,6 +75,10 @@ export interface Change {
   why: string;
   /** New content, for create and update. */
   content?: string | Buffer;
+  /** Shown as one line with the other changes in its group (a copied folder). */
+  group?: string;
+  /** File mode, for launchers (ignored on Windows). */
+  mode?: number;
 }
 
 export interface InitPlan {
@@ -70,6 +94,12 @@ export interface InitPlan {
   /** Repository paths LORE generates or keeps a block in (ignored with LORE). */
   managed: string[];
   changes: Change[];
+  /** The agents wired, as config.json will list them. */
+  agents: AgentId[];
+  /** What only the owner can do, said after the changes (trusting a Codex hook). */
+  next: string[];
+  /** LORE's version in .lore/runtime/ once applied; null without a runtime. */
+  runtime: string | null;
 }
 
 export class InitError extends Error {}
@@ -181,9 +211,152 @@ function planCopy(root: string, suiteDir: string): Change[] {
   if (foreign) {
     throw new InitError(`lore/ already exists and is not LORE's (it holds lore/${foreign}). LORE installs into lore/: rename that folder, then run \`lore init\` again.`);
   }
-  return suite
-    .filter((rel) => !existing.includes(rel))
-    .map((rel) => ({ path: `lore/${rel}`, kind: 'create' as const, why: 'LORE', content: readFileSync(path.join(suiteDir, rel)) }));
+  return suite.filter((rel) => !existing.includes(rel)).map((rel) => ({
+    path: `lore/${rel}`,
+    kind: 'create' as const,
+    why: 'LORE.md, policies, guard scripts, memory template',
+    content: readFileSync(path.join(suiteDir, rel)),
+    group: 'lore/',
+  }));
+}
+
+// ── .lore/: the runtime and its launchers ───────────────────────────────
+
+/** What a runtime copy holds: the package's published files. */
+const RUNTIME_PARTS = ['package.json', 'bin', 'suite', 'hud/dist'];
+const RUNTIME = '.lore/runtime/';
+
+function packageVersion(dir: string): string | null {
+  try {
+    const { version } = JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf8')) as { version?: unknown };
+    return typeof version === 'string' ? version : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Is version a later than b? (major.minor.patch; a pre-release tag is ignored) */
+export function newer(a: string, b: string): boolean {
+  const parts = (v: string) => v.split('-')[0].split('.').map((n) => Number(n) || 0);
+  const [x, y] = [parts(a), parts(b)];
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
+  return false;
+}
+
+/**
+ * Bring .lore/runtime/ level with the package: copy what differs, remove
+ * what the package no longer has (built files carry hashes in their names).
+ * bin/lore.mjs goes last, so the launcher only finds a complete copy. A
+ * newer runtime is kept; so is the runtime when this is it.
+ */
+function planRuntime(root: string, packageDir: string, warnings: string[]): { changes: Change[]; version: string | null } {
+  const target = path.join(root, '.lore', 'runtime');
+  const version = packageVersion(packageDir);
+  if (path.resolve(packageDir) === path.resolve(target)) return { changes: [], version };
+  const installed = packageVersion(target);
+  if (installed && version && newer(installed, version)) {
+    warnings.push(`.lore/runtime/ is LORE ${installed}, newer than this LORE ${version}: kept as it is. Run the newer \`lore\` to change it.`);
+    return { changes: [], version: installed };
+  }
+  const source = RUNTIME_PARTS.flatMap((part) => {
+    const full = path.join(packageDir, part);
+    if (!existsSync(full)) return [];
+    return statSync(full).isDirectory() ? walk(full).map((rel) => `${part}/${rel}`) : [part];
+  }).sort((a, b) => Number(a === 'bin/lore.mjs') - Number(b === 'bin/lore.mjs'));
+  const why = `${version ? `LORE ${version}` : 'LORE'}, which the hooks and launchers run`;
+  const changes: Change[] = source.map((rel) => {
+    const content = readFileSync(path.join(packageDir, rel));
+    const current = existsSync(path.join(target, rel)) ? readFileSync(path.join(target, rel)) : null;
+    const kind: ChangeKind = current === null ? 'create' : current.equals(content) ? 'unchanged' : 'update';
+    return { path: `${RUNTIME}${rel}`, kind, why, group: RUNTIME, ...(kind === 'unchanged' ? {} : { content }) };
+  });
+  const stale = existsSync(target) ? walk(target).filter((rel) => !source.includes(rel)) : [];
+  changes.push(...stale.map((rel) => ({ path: `${RUNTIME}${rel}`, kind: 'remove' as const, why, group: RUNTIME })));
+  return { changes, version };
+}
+
+/**
+ * .lore/lore.mjs: how hooks and launchers run LORE in this repository.
+ * Tries a "runtime" folder named in config.json, then .lore/runtime/, then
+ * a global install, then npx, pinned to the version that wrote it.
+ */
+export function launcherScript(version: string | null): string {
+  const spec = `@dall337/lore${version ? `@${version}` : ''}`;
+  return `#!/usr/bin/env node
+// Generated by LORE: runs LORE's command line for this repository. Edit
+// nothing here; \`lore sync\` regenerates it. In order, it runs a "runtime"
+// folder named in .lore/config.json (a LORE checkout or package), the copy
+// in .lore/runtime/, a global \`lore\`, or npx ${spec}.
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const win = process.platform === 'win32';
+const binIn = (dir) => (dir && existsSync(path.join(dir, 'bin', 'lore.mjs')) ? path.join(dir, 'bin', 'lore.mjs') : null);
+
+function configured() {
+  try {
+    const { runtime } = JSON.parse(readFileSync(path.join(here, 'config.json'), 'utf8').replace(/^\\uFEFF/, ''));
+    return typeof runtime === 'string' && runtime.trim() ? path.resolve(here, '..', runtime.trim()) : null;
+  } catch {
+    return null;
+  }
+}
+
+function globalInstall() {
+  for (const dir of (process.env.PATH ?? '').split(path.delimiter).filter(Boolean)) {
+    const shim = path.join(dir, win ? 'lore.cmd' : 'lore');
+    if (!existsSync(shim)) continue;
+    if (win) return binIn(path.join(dir, 'node_modules', '@dall337', 'lore'));
+    try {
+      const real = realpathSync(shim);
+      if (real.endsWith('lore.mjs')) return real;
+    } catch {}
+  }
+  return null;
+}
+
+const found = binIn(configured()) ?? binIn(path.join(here, 'runtime')) ?? globalInstall();
+if (found) {
+  await import(pathToFileURL(found).href);
+} else {
+  const args = ['--yes', '${spec}', ...process.argv.slice(2)];
+  const run = win
+    ? spawnSync(['npx', ...args].map((a) => \`"\${a.replace(/"/g, '""')}"\`).join(' '), { stdio: 'inherit', shell: true })
+    : spawnSync('npx', args, { stdio: 'inherit' });
+  process.exit(run.status ?? 1);
+}
+`;
+}
+
+const HUD_SH = `#!/bin/sh
+# Generated by LORE: opens this repository's HUD. \`lore sync\` regenerates it.
+here="$(dirname "$0")"
+exec node "$here/lore.mjs" hud --repo "$here/.." "$@"
+`;
+
+const HUD_CMD = [
+  '@echo off',
+  "rem Generated by LORE: opens this repository's HUD. `lore sync` regenerates it.",
+  'node "%~dp0lore.mjs" hud --repo "%~dp0.." %*',
+  '',
+].join('\r\n');
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+function readConfig(root: string): { text: string | null; config: Record<string, unknown> } {
+  const text = readText(path.join(root, '.lore', 'config.json'));
+  if (text === null || !text.trim()) return { text, config: {} };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text.replace(/^﻿/, ''));
+  } catch (err) {
+    throw new InitError(`.lore/config.json is not valid JSON (${(err as Error).message}): fix it, then run this again.`);
+  }
+  if (!isObject(parsed)) throw new InitError('.lore/config.json is not a JSON object: fix it, then run this again.');
+  return { text, config: parsed };
 }
 
 export function planInit(options: InitOptions): InitPlan {
@@ -191,10 +364,12 @@ export function planInit(options: InitOptions): InitPlan {
   const warnings: string[] = [];
   const changes: Change[] = [];
   const managed = new Set<string>();
-  const put = (rel: string, content: string, why: string) => {
+  const next: string[] = [];
+  /** Plan a generated file (or a file with LORE's block); `ignore` adds its own rule. */
+  const put = (rel: string, content: string, why: string, extra: { ignore?: boolean; mode?: number; group?: string } = {}) => {
     const current = readText(path.join(root, rel));
-    changes.push({ path: rel, kind: current === null ? 'create' : current === content ? 'unchanged' : 'update', why, content });
-    managed.add(rel);
+    changes.push({ path: rel, kind: current === null ? 'create' : current === content ? 'unchanged' : 'update', why, content, mode: extra.mode, group: extra.group });
+    if (extra.ignore !== false) managed.add(rel);
   };
   const drop = (rel: string, why: string) => changes.push({ path: rel, kind: 'remove', why });
 
@@ -267,7 +442,65 @@ export function planInit(options: InitOptions): InitPlan {
     }
   }
 
-  // 3. Ignore rules: LORE stays out of git unless the owner shares it.
+  // 3. .lore/: settings, and the runtime the hooks and launchers run.
+  const { text: configText, config } = readConfig(root);
+  const listed = Array.isArray(config.agents) ? config.agents.filter(isAgentId) : [];
+  const wired = AGENT_IDS.filter((id) => listed.includes(id) || (options.agents ?? []).includes(id));
+  const memory = isObject(config.memory) ? config.memory : {};
+  const claudeMemory = options.claudeMemory ?? (typeof memory.claude === 'string' ? memory.claude : undefined);
+  if (options.agents || options.defaultAgent || options.claudeMemory || options.packageDir) {
+    const settings: Record<string, unknown> = { ...config };
+    if (options.agents) settings.agents = wired;
+    if (options.defaultAgent) settings.agent = options.defaultAgent;
+    if (options.claudeMemory) settings.memory = { ...memory, claude: options.claudeMemory };
+    if (!('autostart' in settings)) settings.autostart = true;
+    const same = configText !== null && JSON.stringify(settings) === JSON.stringify(config);
+    put('.lore/config.json', same ? configText : `${JSON.stringify(settings, null, 2)}\n`, 'settings: the agents LORE wired, and HUD autostart', { ignore: false });
+  }
+  let runtime: string | null = null;
+  if (options.packageDir) {
+    const planned = planRuntime(root, options.packageDir, warnings);
+    changes.push(...planned.changes);
+    runtime = planned.version;
+    put('.lore/lore.mjs', launcherScript(runtime), 'runs LORE here: .lore/runtime/, else a global `lore`, else npx', { ignore: false, mode: 0o755 });
+    const why = 'opens the board: `.lore/hud`, or `.lore\\hud` in PowerShell and cmd';
+    put('.lore/hud', HUD_SH, why, { ignore: false, mode: 0o755, group: '.lore/hud, hud.cmd' });
+    put('.lore/hud.cmd', HUD_CMD, why, { ignore: false, group: '.lore/hud, hud.cmd' });
+  }
+
+  // 4. The agents' session hooks, merged into their settings files.
+  const hooks = (rel: string, wanted: HookEvents | null, why: string, create: Record<string, unknown> = {}) => {
+    const state = fileState(root, rel);
+    if (!wanted && !hasLoreHooks(state.text)) return false;
+    if (state.tracked) {
+      if (wanted) warnings.push(`${rel} is committed, so LORE cannot add its session hook without changing it: the agent still reads LORE, but starts without the board brief.`);
+      changes.push({ path: rel, kind: 'skipped', why: 'committed (see below)' });
+      return false;
+    }
+    const merged = mergeHooks(state.text, wanted ?? {}, create);
+    if (merged.error !== undefined) {
+      warnings.push(`${rel} is ${merged.error}, so LORE left it alone. Fix it, then run \`lore sync\`.`);
+      changes.push({ path: rel, kind: 'skipped', why: 'not valid JSON (see below)' });
+      return false;
+    }
+    put(rel, merged.text, why);
+    return changes.at(-1)!.kind !== 'unchanged';
+  };
+  hooks(
+    '.claude/settings.local.json',
+    wired.includes('claude') ? claudeHooks(claudeMemory !== undefined) : null,
+    `Claude Code hooks: the board brief and HUD at session start${claudeMemory !== undefined ? ', and the memory guard' : ''}`,
+  );
+  const codexChanged = hooks('.codex/hooks.json', wired.includes('codex') ? codexHooks(root) : null, 'Codex hook: the board brief and HUD at session start', {
+    description: 'LORE: the board brief and HUD at session start (lore init). `lore sync` regenerates the LORE entry.',
+  });
+  if (codexChanged && wired.includes('codex')) {
+    next.push(
+      'Codex runs project hooks only once you trust them: open Codex in this repository, trust the folder if it asks, then run /hooks and trust LORE’s session hook. It asks again whenever the hook changes.',
+    );
+  }
+
+  // 5. Ignore rules: LORE stays out of git unless the owner shares it.
   const gitignore = readText(path.join(root, '.gitignore'));
   const commit = options.commit === true || (gitignore?.includes(IGNORE_BEGIN) ?? false);
   const files = [...managed].sort();
@@ -287,7 +520,7 @@ export function planInit(options: InitOptions): InitPlan {
     ruleFile(excludeRel, excludeText, upsertBlock(excludeText, IGNORE_BEGIN, IGNORE_END, rules), 'keeps LORE out of git (this clone only; never committed)');
   }
 
-  // 4. Codex stops reading instructions at 32 KiB.
+  // 6. Codex stops reading instructions at 32 KiB.
   const codex = changes.find((c) => c.content !== undefined && (c.path === 'AGENTS.override.md' || c.path === 'AGENTS.md'));
   const size = codex?.content === undefined ? 0 : Buffer.byteLength(codex.content);
   if (codex && size > CODEX_BUDGET) {
@@ -296,7 +529,7 @@ export function planInit(options: InitOptions): InitPlan {
     );
   }
 
-  return { root, notes, warnings, installed, sync, commit, managed: files, changes };
+  return { root, notes, warnings, installed, sync, commit, managed: files, changes, agents: wired, next, runtime };
 }
 
 /** Write a plan's creates, updates and removals. */
@@ -307,6 +540,7 @@ export function applyPlan(plan: InitPlan) {
     if ((change.kind === 'create' || change.kind === 'update') && change.content !== undefined) {
       mkdirSync(path.dirname(file), { recursive: true });
       writeFileSync(file, change.content);
+      if (change.mode !== undefined && process.platform !== 'win32') chmodSync(file, change.mode);
     }
   }
 }
@@ -322,20 +556,50 @@ const VERBS: Record<ChangeKind, [done: string, dry: string]> = {
   skipped: ['skipped', 'skipped'],
 };
 
-/** The plan as the owner reads it: one line per file, the copy of lore/ as one. */
+interface Entry {
+  path: string;
+  kind: ChangeKind;
+  why: string;
+  /** For a group: how many of its files change. */
+  changed: number;
+  group: boolean;
+}
+
+/** The plan's changes with each group (a copied folder) folded into one entry. */
+function entries(plan: InitPlan): Entry[] {
+  const out: Entry[] = [];
+  for (const c of plan.changes) {
+    const moves = c.kind === 'create' || c.kind === 'update' || c.kind === 'remove' ? 1 : 0;
+    const entry = c.group ? out.find((e) => e.group && e.path === c.group) : undefined;
+    if (!entry) {
+      out.push({ path: c.group ?? c.path, kind: c.kind, why: c.why, changed: moves, group: c.group !== undefined });
+    } else {
+      entry.changed += moves;
+      if (entry.kind !== c.kind) entry.kind = entry.changed ? 'update' : 'unchanged';
+    }
+  }
+  return out;
+}
+
+/** The plan as the owner reads it: one line per file, each copied folder as one. */
 export function describePlan(plan: InitPlan, dryRun = false): string[] {
   const at = dryRun ? 1 : 0;
-  const pad = (p: string) => p.padEnd(22);
+  const pad = (p: string) => p.padEnd(28);
   const lines = plan.notes.map((n) => `  note  ${n}`);
-  const copies = plan.changes.filter((c) => c.path.startsWith('lore/'));
-  if (copies.length) {
-    lines.push(`  ✓ ${pad('lore/')} ${dryRun ? 'would copy' : 'copied'} ${copies.length} files: LORE.md, policies, guard scripts, memory template`);
-  } else if (!plan.sync) {
+  const list = entries(plan);
+  if (!plan.sync && !list.some((e) => e.path === 'lore/')) {
     lines.push(`  ✓ ${pad('lore/')} already installed, and yours to adapt: init never changes it`);
   }
-  for (const c of plan.changes) {
-    if (c.path.startsWith('lore/')) continue;
-    lines.push(`  ${c.kind === 'skipped' ? '!' : '✓'} ${pad(c.path)} ${VERBS[c.kind][at]}: ${c.why}`);
+  for (const e of list) {
+    // A copied folder (its group ends in /) says how many files moved.
+    const folder = e.group && e.path.endsWith('/');
+    const verb =
+      folder && e.kind === 'create'
+        ? `${dryRun ? 'would copy' : 'copied'} ${e.changed} files`
+        : folder && e.kind === 'update'
+          ? `${VERBS.update[at]} ${e.changed} file${e.changed === 1 ? '' : 's'}`
+          : VERBS[e.kind][at];
+    lines.push(`  ${e.kind === 'skipped' ? '!' : '✓'} ${pad(e.path)} ${verb}: ${e.why}`);
   }
   for (const w of plan.warnings) lines.push(`  ! ${w}`);
   return lines;
@@ -352,17 +616,17 @@ export interface CheckResult {
 }
 
 /** `lore check`: is everything LORE generates present and current, and does git leave LORE's private files alone? */
-export function checkRepo(options: { cwd: string; suiteDir: string }): CheckResult {
+export function checkRepo(options: { cwd: string; suiteDir: string; packageDir?: string }): CheckResult {
   const { root } = locate(options.cwd);
   if (!existsSync(path.join(root, 'lore', 'LORE.md'))) {
     return { root, problems: ['LORE is not installed here (no lore/LORE.md): run `lore init`.'], warnings: [], visible: [] };
   }
   const plan = planInit({ ...options, sync: true });
   const problems: string[] = [];
-  for (const c of plan.changes) {
-    if (c.kind === 'create') problems.push(`${c.path} is missing: \`lore sync\` restores it`);
-    if (c.kind === 'update') problems.push(`${c.path} is out of date: \`lore sync\` regenerates it`);
-    if (c.kind === 'remove') problems.push(`${c.path} is left over from an earlier setup: \`lore sync\` removes it`);
+  for (const e of entries(plan)) {
+    if (e.kind === 'create') problems.push(`${e.path} is missing: \`lore sync\` restores it`);
+    if (e.kind === 'update') problems.push(`${e.path} is out of date: \`lore sync\` regenerates it`);
+    if (e.kind === 'remove') problems.push(`${e.path} is left over from an earlier setup: \`lore sync\` removes it`);
   }
 
   const privatePath = (p: string) =>

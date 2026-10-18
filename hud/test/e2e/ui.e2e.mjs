@@ -162,11 +162,15 @@ try {
   await until(`!document.querySelector('.drawer.open')`, 'saved');
   check('An emptied field is cleared', (await disk()).cards.find((c) => c.id === 'rate-limits').notes === undefined);
 
-  // An outside edit (an agent writing the file) shows up live.
+  // An outside edit (an agent writing the file) shows up live, and keyboard
+  // focus stays on the card it was on, though every card is rebuilt.
+  await js(`document.querySelector('.card[data-id="csv-import"]').focus()`);
   b = await disk();
   b.cards.push({ id: 'from-agent', title: 'Written by an agent', column: 'blocked' });
   await writeFile(boardFile, JSON.stringify(b, null, 2));
   check('An outside edit appears live', await until(`!!document.querySelector('.card[data-id="from-agent"]')`, 'live push').catch(() => false));
+  const focusAfter = await js(`({ id: document.activeElement?.dataset?.id ?? null, connected: document.activeElement?.isConnected })`);
+  check('Keyboard focus survives a live update', focusAfter.id === 'csv-import' && focusAfter.connected, JSON.stringify(focusAfter));
 
   // Area lens from a chip click; Esc clears it.
   await js(`document.querySelector('.card[data-id="search-index"] .area').click()`);
@@ -227,14 +231,14 @@ try {
   await js(`document.querySelector('.drawer [aria-label=Close]').click()`);
 
   // A strip opens with an eased height, not a jump: sample its details frame by frame.
+  // (Looked up each frame: a live update may rebuild the card meanwhile.)
   const heights = await js(`new Promise((resolve) => {
-    const card = document.querySelector('.card.is-strip[data-id="retry-writes"]');
-    const more = card.querySelector('.card-more');
+    const strip = () => document.querySelector('.card.is-strip[data-id="retry-writes"]');
     const seen = [];
     const t0 = performance.now();
-    card.focus();
+    strip().focus();
     (function frame() {
-      seen.push(Math.round(more.getBoundingClientRect().height));
+      seen.push(Math.round(strip().querySelector('.card-more').getBoundingClientRect().height));
       if (performance.now() - t0 < 900) requestAnimationFrame(frame);
       else resolve(seen);
     })();

@@ -17,6 +17,7 @@ import { createRepoState } from './repo.ts';
 
 export { getJson, resolveConfig, type HudConfig, type HudInstance };
 export { applyPlan, checkRepo, describePlan, InitError, pending, planInit, type InitPlan } from './init.ts';
+export { AGENT_IDS, AGENT_NAMES, detectAgents, isAgentId, onPath } from './agents.ts';
 
 export interface StartOptions {
   repo: string;
@@ -130,19 +131,22 @@ const clip = (s: string, n = 52) => (s.length > n ? `${s.slice(0, n - 1)}…` : 
 
 /**
  * The board in a few lines, for an agent's session start. Offline and
- * read-only: it never creates the board and never calls GitHub.
+ * read-only: it never creates the board and never calls GitHub. `cli` is
+ * how the agent can run LORE here (`node .lore/lore.mjs` when `lore` may
+ * not be on PATH).
  */
-export async function brief(options: { repo: string; data?: string }): Promise<string> {
+export async function brief(options: { repo: string; data?: string; cli?: string }): Promise<string> {
   const config = resolveConfig(options.repo, options.data);
   const { board: store, journals, meta } = services(config, 'brief');
   const m = meta();
-  const out = [`=== LORE board · ${m.repo} (${m.boardFile} · \`lore hud\` to open it) ===`];
+  const hud = `${options.cli ?? 'lore'} hud`;
+  const out = [`=== LORE board · ${m.repo} (${m.boardFile} · \`${hud}\` to open it) ===`];
 
   let board: Board | null = null;
   try {
     board = await store.peek();
     if (!board) {
-      out.push(`No board yet. Ask the owner whether to bootstrap one, or run \`lore hud\` to start an empty board.`);
+      out.push(`No board yet. Ask the owner whether to bootstrap one, or run \`${hud}\` to start an empty board.`);
     } else if (board.cards.length === 0) {
       out.push(`The board is empty: bootstrap it with the owner (read the repository, propose areas and cards, write what they approve).`);
     } else {
@@ -195,7 +199,7 @@ export async function brief(options: { repo: string; data?: string }): Promise<s
 
   // Where the owner can see the board: the agent can point them at it, or start it.
   const live = await liveInstance(config);
-  out.push(live ? `HUD: ${live.url} (running)` : 'HUD: not running — `lore hud` starts it and opens the browser.');
+  out.push(live ? `HUD: ${live.url} (running)` : `HUD: not running — \`${hud}\` starts it and opens the browser.`);
 
   const policy = m.policies.find((p) => p.name === 'board');
   out.push(
