@@ -226,6 +226,50 @@ try {
   check('Saving a card returns to the open panel', true);
   await js(`document.querySelector('.drawer [aria-label=Close]').click()`);
 
+  // A strip opens with an eased height, not a jump: sample its details frame by frame.
+  const heights = await js(`new Promise((resolve) => {
+    const card = document.querySelector('.card.is-strip[data-id="retry-writes"]');
+    const more = card.querySelector('.card-more');
+    const seen = [];
+    const t0 = performance.now();
+    card.focus();
+    (function frame() {
+      seen.push(Math.round(more.getBoundingClientRect().height));
+      if (performance.now() - t0 < 900) requestAnimationFrame(frame);
+      else resolve(seen);
+    })();
+  })`);
+  const final = heights[heights.length - 1];
+  const between = heights.filter((h) => h > 0 && h < final).length;
+  check('A strip eases open (no jump)', heights[0] === 0 && final > 20 && between >= 3, `0 → ${final}px with ${between} in-between frames`);
+  await js(`document.activeElement.blur()`);
+  await wait(800);
+
+  // Hover intent: a pointer just landing does nothing; resting opens it; a brief
+  // slip off and back keeps it open; leaving closes it.
+  const strip = `document.querySelector('.card.is-strip[data-id="ci-on-prs"]')`;
+  const center = await js(`(() => { const r = ${strip}.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + 10 }; })()`);
+  const moreHeight = `Math.round(${strip}.querySelector('.card-more').getBoundingClientRect().height)`;
+  const pointer = (x, y) => send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+  await pointer(center.x, center.y);
+  await wait(200);
+  const landing = await js(moreHeight);
+  await wait(1000);
+  const rested = await js(moreHeight);
+  await pointer(5, 5);
+  await wait(80);
+  await pointer(center.x, center.y);
+  await wait(600);
+  const afterSlip = await js(moreHeight);
+  await pointer(5, 5);
+  await wait(900);
+  const left = await js(moreHeight);
+  check(
+    'Hover opens on intent, forgives a slip, closes on leaving',
+    landing === 0 && rested > 15 && afterSlip === rested && left === 0,
+    JSON.stringify({ landing, rested, afterSlip, left }),
+  );
+
   // Intake and done columns start stacked; a column's toggle deals it out, and that sticks.
   const stackState = `({ backlog: !!document.querySelector('.col-body[data-column=backlog].is-stacked'), next: !!document.querySelector('.col-body[data-column=next].is-stacked'), done: !!document.querySelector('.col-body[data-column=done].is-stacked') })`;
   const before = await js(stackState);

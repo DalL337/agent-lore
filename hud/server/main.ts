@@ -8,13 +8,15 @@ import { columnWithRole } from '../shared/boardOps.ts';
 import { inboxItems } from '../shared/inbox.ts';
 import type { Board, HudMeta } from '../shared/types.ts';
 import { createBoardStore } from './board.ts';
-import { boardIgnored, listPolicies, rel, resolveConfig, type HudConfig } from './config.ts';
+import { boardIgnored, display, listPolicies, resolveConfig, type HudConfig } from './config.ts';
 import { createHudServer } from './http.ts';
 import { createJournalIndex } from './journals.ts';
 import { createRepoState } from './repo.ts';
 
 export interface StartOptions {
   repo: string;
+  /** Data folder (board, settings); defaults to <repo>/.lore. Outside the repo, the HUD never writes into it. */
+  data?: string;
   port?: number;
   version?: string;
   /** Built page; defaults to the client build next to this server build. */
@@ -41,12 +43,12 @@ function defaultClientDir(): string | null {
 
 function services(config: HudConfig, version: string) {
   const board = createBoardStore(config.boardPath);
-  const policyNames = () => listPolicies(config).map((p) => p.name);
+  const policyNames = () => listPolicies(config).map((p) => ({ name: p.name, stem: path.basename(p.path, '.md') }));
   const journals = createJournalIndex(config.journalsDir, policyNames);
   const meta = (): HudMeta => ({
     repo: config.repoName,
-    journals: rel(config, config.journalsDir),
-    boardFile: rel(config, config.boardPath),
+    journals: display(config, config.journalsDir),
+    boardFile: display(config, config.boardPath),
     policies: listPolicies(config),
     boardIgnored: boardIgnored(config),
     version,
@@ -55,7 +57,7 @@ function services(config: HudConfig, version: string) {
 }
 
 export async function startHud(options: StartOptions): Promise<RunningHud> {
-  const config = resolveConfig(options.repo);
+  const config = resolveConfig(options.repo, options.data);
   const { board, journals, meta } = services(config, options.version ?? 'dev');
   const hud = createHudServer({
     board,
@@ -97,8 +99,8 @@ const clip = (s: string, n = 52) => (s.length > n ? `${s.slice(0, n - 1)}…` : 
  * The board in a few lines, for an agent's session start. Offline and
  * read-only: it never creates the board and never calls GitHub.
  */
-export async function brief(options: { repo: string }): Promise<string> {
-  const config = resolveConfig(options.repo);
+export async function brief(options: { repo: string; data?: string }): Promise<string> {
+  const config = resolveConfig(options.repo, options.data);
   const { board: store, journals, meta } = services(config, 'brief');
   const m = meta();
   const out = [`=== LORE board · ${m.repo} (${m.boardFile} · \`lore hud\` to open it) ===`];

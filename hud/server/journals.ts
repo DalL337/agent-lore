@@ -104,6 +104,13 @@ const POLICIES_LINE = /^\s*(?:[-*]\s+)?[*_]{0,2}policies[*_]{0,2}\s*:[*_]{0,2}\s
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/**
+ * A policy to look for in journal text: its name, and its file stem when
+ * the file says more (`persistent-research-policy.md` → stem
+ * `persistent-research-policy`, name `persistent-research`).
+ */
+export type PolicyKey = string | { name: string; stem?: string };
+
 /** Names on the first `Policies:` line, normalized (`policies/research.md` → `research`). */
 export function declaredPolicies(prose: string[]): string[] {
   for (const line of prose) {
@@ -117,6 +124,7 @@ export function declaredPolicies(prose: string[]): string[] {
           .replace(/[`*_[\]()]/g, '')
           .replace(/^(?:\.\.\/)*(?:lore\/)?(?:policies\/)?(?:reserved\/)?/i, '')
           .replace(/\.md$/i, '')
+          .replace(/-policy$/i, '')
           .toLowerCase(),
       )
       .filter((t) => /^[a-z0-9][a-z0-9-]*$/.test(t) && t !== 'policy' && t !== 'and');
@@ -125,16 +133,24 @@ export function declaredPolicies(prose: string[]): string[] {
   return [];
 }
 
-/** Known policy names the text refers to (`research.md`, "research policy"), minus the declared ones. */
-export function mentionedPolicies(text: string, names: string[], declared: string[]): string[] {
-  return names.filter((n) => {
-    if (declared.includes(n)) return false;
-    const e = escapeRe(n);
-    return new RegExp(`(?:^|[^\\w-])${e}\\.md\\b|(?:^|[^\\w-])${e}[ -]polic(?:y|ies)\\b`, 'i').test(text);
-  });
+/**
+ * Known policies the text refers to — by file (`research.md`,
+ * `persistent-research-policy.md`) or by name ("research policy") — minus
+ * the declared ones.
+ */
+export function mentionedPolicies(text: string, policies: PolicyKey[], declared: string[]): string[] {
+  const out: string[] = [];
+  for (const p of policies) {
+    const { name, stem } = typeof p === 'string' ? { name: p, stem: undefined } : p;
+    if (declared.includes(name) || out.includes(name)) continue;
+    const files = [...new Set([name, stem ?? name])].map(escapeRe).join('|');
+    const e = escapeRe(name);
+    if (new RegExp(`(?:^|[^\\w-])(?:${files})\\.md\\b|(?:^|[^\\w-])${e}[ -]polic(?:y|ies)\\b`, 'i').test(text)) out.push(name);
+  }
+  return out;
 }
 
-export function parseJournal(text: string, fallbackTitle: string, policyNames: string[] = []): Parsed {
+export function parseJournal(text: string, fallbackTitle: string, policyNames: PolicyKey[] = []): Parsed {
   const { title, sections, prose } = splitSections(text);
   const conclusionText = collapse(sections.get('final conclusions') ?? sections.get('final conclusion'), 360);
   const prRefs = [...new Set([...text.matchAll(PR_REF)].map((m) => Number(m[1])))].sort((a, b) => b - a);
@@ -170,7 +186,7 @@ export function writtenAfter(mtime: Date, closedAt: string): boolean {
   return Number.isFinite(at) && mtime.getTime() > at;
 }
 
-export function createJournalIndex(journalsDir: string, policyNames: () => string[] = () => []) {
+export function createJournalIndex(journalsDir: string, policyNames: () => PolicyKey[] = () => []) {
   const cache = new Map<string, { key: string; parsed: Parsed }>();
 
   function resolve(file: string): string {
@@ -191,7 +207,7 @@ export function createJournalIndex(journalsDir: string, policyNames: () => strin
       throw err;
     }
     const known = policyNames();
-    const knownKey = known.join(',');
+    const knownKey = JSON.stringify(known);
     const now = Date.now();
     const out = await Promise.all(
       names.map(async (file): Promise<JournalSummary> => {
