@@ -381,6 +381,12 @@ export function renderBoard(root: HTMLElement) {
     mount(root, error ?? h('p', { class: 'muted' }, 'Loading board…'));
     return;
   }
+  // Rendering rebuilds every card, so a card with keyboard focus (or focus
+  // inside it) would drop it to the page whenever the board changes, say an
+  // agent's edit arriving live. Put focus back on the same card, before
+  // anything reads layout, so an open strip stays open instead of replaying.
+  const active = document.activeElement;
+  const focusedCard = active instanceof HTMLElement && root.contains(active) ? active.closest<HTMLElement>('.card[data-id]')?.dataset.id : undefined;
   mount(
     root,
     error,
@@ -388,5 +394,6 @@ export function renderBoard(root: HTMLElement) {
     state.board.cards.length === 0 ? welcome() : null,
     h('div', { class: 'board' }, state.board.columns.map(renderColumn)),
   );
+  if (focusedCard) root.querySelector<HTMLElement>(`.card[data-id="${CSS.escape(focusedCard)}"]`)?.focus({ preventScroll: true });
   markTruncated(root);
 }

@@ -30,6 +30,12 @@ terminal (Ctrl+C stops it).
   journals, an untracked `lore/` folder) exist only in the main checkout,
   so the HUD resolves them there from any linked worktree; branch and
   status come from the worktree it was started in.
+- **It starts with your agent.** After `lore init`, each Claude Code or
+  Codex session starts with a hook that runs `lore session`: it prints the
+  brief, starts the HUD in the background if it isn't running (no browser
+  tab), and keeps LORE's generated files current. `"autostart": false` in
+  `config.json` stops it starting the HUD. `.lore/hud` opens the page
+  without `lore` on your PATH.
 
 `--data <dir>` keeps the board and settings in a folder outside the
 repository instead of `<repo>/.lore/`. The repository is then only read:
@@ -42,7 +48,7 @@ without adding anything to it.
 | | Where | Notes |
 |---|---|---|
 | Board | `<repo>/.lore/board.json` in the main checkout (or `<data>/board.json`) | Created on first run. Private: keep `/.lore/` out of git (`.git/info/exclude`). |
-| Settings | `<repo>/.lore/config.json` (or `<data>/config.json`) | Optional: `{ "name": "…", "journals": ".research", "policies": "lore/policies", "port": 5231 }`; relative paths resolve against the main checkout. |
+| Settings | `<repo>/.lore/config.json` (or `<data>/config.json`) | Optional: `{ "name": "…", "journals": ".research", "policies": "lore/policies", "port": 5231, "autostart": true }`; relative paths resolve against the main checkout. `lore init` adds `"agents"` (the ones it wired), `"agent"` (the default), and `"memory"` (Claude's seeded memory folder); `"runtime"` points the launcher at another LORE checkout. |
 | Running instance | `<data>/hud.json`, `<data>/hud.log` | Written by the HUD while it runs; removed by `lore hud stop`. |
 | Journals | `<repo>/.research/*.md` | Read only; the HUD never edits a journal. |
 | Policies | `lore/policies/`, else `policies/` | Names for the journal policy tags; `research-policy.md` reads as `research`. |

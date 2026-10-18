@@ -3,7 +3,7 @@
 // `check` and `sync` in a scratch git repository. Needs the build
 // (npm run build).
 
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { appendFile, cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -117,5 +117,95 @@ try {
 } finally {
   await rm(scratch, { recursive: true, force: true }).catch(() => {});
   await rm(plain, { recursive: true, force: true }).catch(() => {});
+}
+
+// Agents: the runtime and launcher, the session hook, connect, memory seed.
+const wired = await mkdtemp(path.join(tmpdir(), 'lore-agents-e2e-'));
+const memoryDir = await mkdtemp(path.join(tmpdir(), 'lore-memory-e2e-'));
+let sessionPid = null;
+// As the hooks run it: through .lore/lore.mjs, with CI unset (CI skips the HUD autostart).
+const launcher = (...args) => {
+  const r = spawnSync(process.execPath, [path.join(wired, '.lore', 'lore.mjs'), ...args], {
+    cwd: wired,
+    encoding: 'utf8',
+    timeout: 30_000,
+    env: { ...process.env, CI: '' },
+  });
+  return { code: r.status, out: `${r.stdout}${r.stderr}` };
+};
+try {
+  execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: wired });
+  execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.test', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: wired });
+  const clean = () => execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: wired, encoding: 'utf8' }) === '';
+
+  const init = run(wired, 'init', '--agents', 'claude,codex', '--yes');
+  const settings = JSON.parse(await readFile(path.join(wired, '.claude', 'settings.local.json'), 'utf8').catch(() => '{}'));
+  check(
+    'lore init --agents wires both: runtime, launcher, hooks; git status empty',
+    init.code === 0 &&
+      existsSync(path.join(wired, '.lore', 'runtime', 'bin', 'lore.mjs')) &&
+      existsSync(path.join(wired, '.codex', 'hooks.json')) &&
+      settings.hooks?.SessionStart?.length === 1 &&
+      /trust LORE’s session hook/.test(init.out) &&
+      clean(),
+    init.code === 0 ? '' : init.out,
+  );
+
+  const started = launcher('session', '--agent', 'claude');
+  sessionPid = JSON.parse(await readFile(path.join(wired, '.lore', 'hud.json'), 'utf8').catch(() => 'null'))?.pid ?? null;
+  check(
+    'the session hook prints the brief and starts the HUD',
+    started.code === 0 && /=== LORE board/.test(started.out) && /HUD: http:\/\/127\.0\.0\.1:\d+ \(running\)/.test(started.out) && sessionPid !== null && alive(sessionPid),
+    started.out.split('\n').find((l) => l.startsWith('HUD')) ?? started.out,
+  );
+  check('the brief names the launcher, which works without lore on PATH', started.out.includes('`node .lore/lore.mjs hud`'));
+  const stopped = launcher('hud', 'stop');
+  await new Promise((r) => setTimeout(r, 300));
+  check('the launcher runs the rest of the CLI (hud stop)', stopped.code === 0 && /stopped/.test(stopped.out) && !alive(sessionPid));
+
+  // Two sessions at once (an editor restoring several): one HUD between them.
+  const together = await Promise.all(
+    ['claude', 'codex'].map(
+      (agent) =>
+        new Promise((done) => {
+          const child = spawn(process.execPath, [path.join(wired, '.lore', 'lore.mjs'), 'session', '--agent', agent], { cwd: wired, env: { ...process.env, CI: '' } });
+          let out = '';
+          child.stdout.on('data', (d) => (out += d));
+          child.on('close', () => done(out.match(/HUD: (\S+) \(running\)/)?.[1] ?? null));
+        }),
+    ),
+  );
+  const shared = JSON.parse(await readFile(path.join(wired, '.lore', 'hud.json'), 'utf8').catch(() => 'null'));
+  // Each start writes one header line to the log; the first session's start is already there.
+  const starts = (await readFile(path.join(wired, '.lore', 'hud.log'), 'utf8')).split('\n').filter((l) => /^── \S+ lore hud /.test(l)).length;
+  check(
+    'two sessions starting together share one HUD',
+    together[0] !== null && together[0] === together[1] && together[0] === shared?.url && starts === 2,
+    `${together.join(' · ')} · ${starts - 1} start(s)`,
+  );
+  if (shared?.pid) sessionPid = shared.pid;
+  launcher('hud', 'stop');
+
+  const listing = launcher('connect');
+  check('lore connect lists both as connected', /Claude Code\s+connected \(default\)/.test(listing.out) && /Codex\s+connected/.test(listing.out));
+
+  const seeded = launcher('memory', 'seed', memoryDir);
+  const guarded = JSON.parse(await readFile(path.join(wired, '.claude', 'settings.local.json'), 'utf8'));
+  check(
+    'lore memory seed shapes the hub and turns on the guard',
+    seeded.code === 0 && existsSync(path.join(memoryDir, 'MEMORY.md')) && guarded.hooks?.PostToolUse?.[0]?.matcher === 'Write|Edit' && clean(),
+    seeded.code === 0 ? '' : seeded.out,
+  );
+
+  const config = JSON.parse(await readFile(path.join(wired, '.lore', 'config.json'), 'utf8'));
+  await writeFile(path.join(wired, '.lore', 'config.json'), JSON.stringify({ ...config, autostart: false }));
+  const quiet = launcher('session', '--agent', 'codex');
+  check('"autostart": false: the session brief, without starting the HUD', quiet.code === 0 && /HUD: not running/.test(quiet.out) && !existsSync(path.join(wired, '.lore', 'hud.json')));
+} catch (err) {
+  check('agents run', false, err.message);
+} finally {
+  if (sessionPid && alive(sessionPid)) process.kill(sessionPid);
+  await rm(wired, { recursive: true, force: true }).catch(() => {});
+  await rm(memoryDir, { recursive: true, force: true }).catch(() => {});
 }
 process.exit(results.every(Boolean) ? 0 : 1);
