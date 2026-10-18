@@ -606,10 +606,20 @@ function planGitHook(p: Planner) {
   const block = `${HOOK_BEGIN}\n${line}\n${HOOK_END}\n`;
   const text = readText(file);
   const why = 'git hook: each new worktree gets LORE';
+  // Git skips a hook that isn't executable (Git for Windows doesn't check).
+  // An owner's hook stays as they set it: making it executable would turn
+  // their disabled script back on.
+  const runs = process.platform === 'win32' || text === null || (statSync(file).mode & 0o111) !== 0;
+  const notRun = `Worktrees: your ${rel} isn't executable, so git skips it and a block of LORE's in it wouldn't run. To give new worktrees LORE as git creates them, make it executable (chmod +x) and run \`lore sync\`; until then a session in the main checkout, \`lore sync\`, or \`node .lore/lore.mjs worktree\` run in the worktree sets it up.`;
   if (text === null) {
     p.put(rel, `#!/bin/sh\n${block}`, why, { ignore: false, mode: 0o755 });
   } else if (findBlock(text, HOOK_BEGIN, HOOK_END)) {
-    p.put(rel, upsertBlock(text, HOOK_BEGIN, HOOK_END, line), why, { ignore: false, mode: 0o755 });
+    const alone = /^(#![^\n]*)?\s*$/.test(removeBlock(text, HOOK_BEGIN, HOOK_END));
+    if (!alone && !runs) p.warnings.push(notRun);
+    p.put(rel, upsertBlock(text, HOOK_BEGIN, HOOK_END, line), why, { ignore: false, mode: alone ? 0o755 : undefined });
+  } else if (/^#!.*\b(sh|bash|dash|zsh)\b/.test(text.split('\n', 1)[0]) && !runs) {
+    p.warnings.push(notRun);
+    p.changes.push({ path: rel, kind: 'skipped', why: 'not executable (see below)' });
   } else if (/^#!.*\b(sh|bash|dash|zsh)\b/.test(text.split('\n', 1)[0])) {
     const cut = text.indexOf('\n') + 1 || text.length;
     p.put(rel, `${text.slice(0, cut)}${cut === text.length && !text.endsWith('\n') ? '\n' : ''}${block}${text.slice(cut)}`, 'LORE block in your post-checkout hook: each new worktree gets LORE', { ignore: false });

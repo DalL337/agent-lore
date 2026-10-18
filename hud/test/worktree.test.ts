@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { chmodSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { after, test } from 'node:test';
@@ -172,6 +172,7 @@ test('a worktree on a branch with its own AGENTS.md: its files differ from main�
 test('the git hook: git runs it for each new worktree, and it joins a hook of the owner’s rather than replacing it', async () => {
   const main = await repo();
   await write(main, { '.git/hooks/post-checkout': '#!/bin/sh\necho "owner hook ran" >> "$(git rev-parse --git-common-dir)/owner.log"\n' });
+  chmodSync(path.join(main, '.git/hooks/post-checkout'), 0o755);
   run(main, { packageDir: await fakePackage(), agents: [] });
   const hook = await read(main, '.git/hooks/post-checkout');
   assert.ok(hook.startsWith('#!/bin/sh\n# >>> LORE'), 'LORE’s block right after the shebang');
@@ -188,6 +189,24 @@ test('the git hook: git runs it for each new worktree, and it joins a hook of th
 
   uninstall(main);
   assert.equal(await read(main, '.git/hooks/post-checkout'), '#!/bin/sh\necho "owner hook ran" >> "$(git rev-parse --git-common-dir)/owner.log"\n', 'uninstall gives the owner’s hook back exactly');
+  if (process.platform !== 'win32') assert.equal(statSync(path.join(main, '.git/hooks/post-checkout')).mode & 0o777, 0o755, 'and still executable');
+});
+
+test('an owner’s hook that isn’t executable stays as it is: git skips it, so LORE warns instead of joining it', { skip: process.platform === 'win32' && 'Windows has no executable bit' }, async () => {
+  const main = await repo();
+  const hook = '#!/bin/sh\necho "switched off"\n';
+  await write(main, { '.git/hooks/post-checkout': hook });
+  chmodSync(path.join(main, '.git/hooks/post-checkout'), 0o644);
+  const plan = run(main, { packageDir: await fakePackage(), agents: [] });
+  assert.match(plan.warnings.join('\n'), /isn't executable, so git skips it/);
+  assert.equal(await read(main, '.git/hooks/post-checkout'), hook);
+  assert.equal(statSync(path.join(main, '.git/hooks/post-checkout')).mode & 0o777, 0o644, 'not switched back on');
+  assert.equal(status(main), '');
+
+  // Once the owner makes it executable, sync joins it.
+  chmodSync(path.join(main, '.git/hooks/post-checkout'), 0o755);
+  run(main, { packageDir: await fakePackage(), agents: [], sync: true });
+  assert.match(await read(main, '.git/hooks/post-checkout'), /^#!\/bin\/sh\n# >>> LORE/);
 });
 
 test('a hook LORE can’t join, or hooks in a folder of their own (husky), are left alone with a warning', async () => {
