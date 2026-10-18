@@ -21,21 +21,41 @@ registers, and guards.
 
 ## Try it
 
-LORE's command line ships as an npm package (Node 20+):
+LORE's command line ships as an npm package (Node 20+). In a git
+repository:
 
 ```sh
-npx @dall337/lore hud     # open the HUD for the repository in this folder
-npm i -g @dall337/lore    # or install it, then: lore hud · lore hud status · lore hud stop · lore brief
+npx @dall337/lore init
+```
+
+`init` sets LORE up in one command, privately: `git status` stays empty
+and nothing committed changes.
+
+- It copies the suite into `lore/`, yours to adapt, and keeps it and
+  everything else LORE writes out of git (rules in `.git/info/exclude`).
+- It wires the agents it finds, Claude Code and Codex, so each session
+  starts with a brief of the board and starts the HUD in the background.
+  Codex runs the hook once you trust the folder and the hook (`/hooks`).
+- New worktrees get LORE as git creates them.
+- It opens the HUD, then offers to start your default agent to fill the
+  board with you: seed its memory, survey the repository, propose areas
+  and cards. Decline, and it prints the prompt to give the agent later.
+
+`--dry-run` lists every file it would touch first. `--commit` shares
+`lore/` through the repository instead, for teams. To refresh, run
+`npx @dall337/lore@latest update`. `lore uninstall` takes LORE out again
+and leaves the repository as it was: your adapted `lore/` and the board
+stay unless you add `--all`, and journals always stay.
+
+To try only the HUD, without installing anything:
+
+```sh
+npx @dall337/lore hud --data <folder>   # the board lives in <folder>; the repository is only read
+npm i -g @dall337/lore                  # or install it: lore hud · lore hud status · lore hud stop · lore brief
 ```
 
 `lore hud` runs a local, private page for the repository: its board, its
 research journals, and its open GitHub work (see [The HUD](#the-hud)).
-Add `--data <folder>` to keep the board outside the repository and leave
-the repository untouched while you try it.
-
-*Early release (0.1).* `lore init`, which sets LORE up in a repository in
-one command, is next. Until then, adopt the suite by copying it, as
-described under [Adopting](#adopting).
 
 ## Where this came from
 
@@ -65,8 +85,9 @@ provenance-carrying rules, append-only memory, claim-based orchestration
 ## Adopting
 
 *Layout as of 2026-10-18.* LORE lives in one folder, `lore/`, inside your
-repository, and stays private by default. `lore init` (the next release)
-will do all of this in one command; until then, by hand:
+repository, and stays private by default. `lore init` does steps 1–3 for
+you (see [Try it](#try-it)), and its hand-off starts you on 4. To adopt
+by hand instead:
 
 1. **Copy `suite/lore/` into your repository as `lore/`.**
 2. **Keep it private.** Add the rules in `lore/exclude-additions.txt` to
@@ -126,6 +147,10 @@ handoffs. Full selection and coexistence rules: `lore/policies/memory.md` §0.
 > `.claude/settings.local.json` (your personal, uncommitted settings) so
 > each memory write is checked. An existing index with prose in it is
 > migrated first; `init` refuses to touch one.
+>
+> *(2026-10-18)* After `lore init`, `lore memory seed <memory-dir>` does
+> both steps; the hand-off prompt has Claude run it on its own memory
+> folder.
 
 The shipped memory guard checks the bundled web's format; it does not
 validate a different provider.

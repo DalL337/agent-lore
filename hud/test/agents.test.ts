@@ -9,7 +9,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { claudeHooks, detectAgents, mergeHooks, type Machine } from '../server/agents.ts';
+import { agentLaunch, claudeHooks, detectAgents, handoffPrompt, mergeHooks, type Machine } from '../server/agents.ts';
 import { applyPlan, checkRepo, describePlan, newer, pending, planInit, type InitOptions, type InitPlan } from '../server/init.ts';
 import { cleanup, emptyRepo } from './helpers.ts';
 
@@ -86,6 +86,53 @@ test('agents are found on PATH, as an editor extension, or by their settings fol
     ['claude', false, null],
     ['codex', true, '~/.codex'],
   ]);
+});
+
+// ── The hand-off ──────────────────────────────────────────────────────
+
+test('the hand-off prompt: Claude seeds its memory first, Codex starts at the board; one line, nothing cmd.exe would change', () => {
+  const claude = handoffPrompt('claude', 'node C:/work/app/.lore/lore.mjs');
+  assert.match(claude, /1\) Your memory: .*run node C:\/work\/app\/\.lore\/lore\.mjs memory seed followed by that folder's path/);
+  assert.match(claude, /ask me before changing anything/, 'existing memory is reported, not converted');
+  assert.match(claude, /2\) The board is empty: fill it with me as lore\/policies\/board\.md section 3 describes\./);
+  assert.match(claude, /3\) Go through the Provider Memory table in lore\/LORE\.md section 5/);
+  const codex = handoffPrompt('codex');
+  assert.doesNotMatch(codex, /memory seed/, 'Codex’s memories are left alone');
+  assert.match(codex, /1\) The board is empty.* 2\) Go through the Provider Memory table/);
+  for (const prompt of [claude, codex]) assert.doesNotMatch(prompt, /["%^&|<>!\r\n`]/);
+});
+
+test('launching an agent: its command on PATH, a .cmd shim through cmd.exe, or a reason it can’t be started', async () => {
+  const home = await emptyRepo();
+  await write(home, { 'win/claude.exe': '', 'win/codex.cmd': '', 'nix/claude': '' });
+  const win: Machine = { env: { PATH: path.join(home, 'win'), PATHEXT: '.EXE;.CMD' }, home, platform: 'win32' };
+  const prompt = handoffPrompt('claude');
+  assert.deepEqual(agentLaunch('claude', prompt, win), { file: path.join(home, 'win', 'claude.exe'), args: [prompt], shell: false });
+  assert.deepEqual(agentLaunch('codex', prompt, win), { file: `"${path.join(home, 'win', 'codex.cmd')}" "${prompt}"`, args: [], shell: true });
+  assert.match((agentLaunch('codex', 'fix this & that', win) as { reason: string }).reason, /cmd\.exe script/);
+  // (A POSIX PATH splits on ":", so this one needs a path without a drive letter.)
+  if (process.platform !== 'win32') {
+    assert.deepEqual(agentLaunch('claude', prompt, { env: { PATH: path.join(home, 'nix') }, home, platform: 'linux' }), { file: path.join(home, 'nix', 'claude'), args: [prompt], shell: false });
+  }
+  assert.deepEqual(agentLaunch('codex', prompt, { env: { PATH: '' }, home, platform: 'linux' }), { reason: 'codex isn\'t on PATH' });
+});
+
+test('the prompt reaches an agent behind an npm .cmd shim exactly as written', { skip: process.platform !== 'win32' && 'cmd.exe is Windows-only' }, async () => {
+  const dir = await emptyRepo();
+  const got = path.join(dir, 'argv.json');
+  // npm's shims end by running node on the package with %*, as this one does.
+  await write(dir, {
+    'record.mjs': `import { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(got)}, JSON.stringify(process.argv.slice(2)));\n`,
+    'bin/claude.cmd': `@ECHO off\r\nSETLOCAL\r\nSET "_prog=${process.execPath}"\r\nendLocal & "%_prog%"  "${path.join(dir, 'record.mjs')}" %*\r\n`,
+  });
+  for (const id of ['claude', 'codex'] as const) {
+    const prompt = handoffPrompt(id, `node ${slash(dir)}/.lore/lore.mjs`);
+    const launch = agentLaunch('claude', prompt, { env: { PATH: path.join(dir, 'bin'), PATHEXT: '.EXE;.CMD' }, home: dir, platform: 'win32' });
+    assert.ok('file' in launch && launch.shell);
+    const run = spawnSync(launch.file, launch.args, { shell: launch.shell, encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr);
+    assert.deepEqual(JSON.parse(await read(dir, 'argv.json')), [prompt]);
+  }
 });
 
 // ── Merging hooks into settings files ─────────────────────────────────

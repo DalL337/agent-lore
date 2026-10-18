@@ -1,6 +1,6 @@
 {
   "name": "@dall337/lore",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "LORE — Living Operational Rules & Evidence: a read-and-adapt governance suite for agent-driven development, with a local HUD for its board and journals.",
   "keywords": [
     "agents",

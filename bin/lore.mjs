@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // lore — LORE's command line.
 //
-//   lore init       [--repo <path>] [--dry-run] [--commit] [--agents <list>] [--yes]
+//   lore init       [--repo <path>] [--dry-run] [--commit] [--agents <list>] [--yes] [--no-open]
 //   lore sync       [--repo <path>] [--dry-run]
 //   lore check      [--repo <path>]
 //   lore update     [--repo <path>] [--dry-run]
@@ -83,12 +83,15 @@ async function loadServer() {
   return import(built.href);
 }
 
+/** Open a page in the browser; false when BROWSER=none asks not to (the address is printed anyway). */
 function openBrowser(url) {
+  if (process.env.BROWSER === 'none') return false;
   const [cmd, cmdArgs] =
     process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
   const child = spawn(cmd, cmdArgs, { stdio: 'ignore', detached: true, windowsHide: true });
   child.on('error', () => console.log(`Open ${url} in your browser.`));
   child.unref();
+  return true;
 }
 
 const target = () => ({ repo: path.resolve(option('--repo') ?? process.cwd()), data: option('--data') && path.resolve(option('--data')) });
@@ -372,6 +375,72 @@ async function install(sync) {
   if (changed && !dryRun && !sync) {
     console.log(`Next: adapt lore/LORE.md and lore/policies/ to this repository (then \`lore sync\`); \`${hudLauncher}\` opens the board.`);
   }
+  if (!sync && !dryRun) {
+    if (changed && !flag('--no-open') && !process.env.CI) await openHud(server, planned.main);
+    await handOff(server, planned.main, here);
+  }
+}
+
+/** Start the HUD through the repository's launcher, so it runs from .lore/runtime/ and not a passing npx copy, then open it once. */
+async function openHud(server, main) {
+  const launcher = path.join(main, '.lore', 'lore.mjs');
+  if (!existsSync(launcher)) return;
+  const run = spawnSync(process.execPath, [launcher, 'hud', '--no-open', '--repo', main], { encoding: 'utf8', timeout: 30_000, windowsHide: true });
+  const live = (await server.findHud({ repo: main }).catch(() => null))?.live;
+  if (!live) {
+    const last = `${run.stdout ?? ''}${run.stderr ?? ''}`.trim().split('\n').pop() || run.error?.message || 'no answer';
+    console.log(`HUD: didn't start (${last}); \`${hudLauncher}\` tries again.`);
+    return;
+  }
+  console.log(`HUD → ${live.url}${openBrowser(live.url) ? '  (opened)' : ''}`);
+}
+
+/** A board with no cards yet, or none at all (the HUD creates it). A board that isn't valid JSON is the owner's to fix. */
+function boardEmpty(main) {
+  let text;
+  try {
+    text = readFileSync(path.join(main, '.lore', 'board.json'), 'utf8');
+  } catch {
+    return true;
+  }
+  try {
+    const board = JSON.parse(text.replace(/^﻿/, ''));
+    return !Array.isArray(board.cards) || board.cards.length === 0;
+  } catch {
+    return false;
+  }
+}
+
+async function confirm(question) {
+  const { createInterface } = await import('node:readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = (await rl.question(question)).trim().toLowerCase();
+  rl.close();
+  return answer === '' || answer === 'y' || answer === 'yes';
+}
+
+/**
+ * The hand-off: while the board is empty, offer to start the default agent
+ * here with its first prompt (memory, then the board, then the provider
+ * memory table); otherwise, or when it can't be started from this
+ * terminal, print the prompt to give it.
+ */
+async function handOff(server, main, here) {
+  const agent = settingsOf(main).agent;
+  if (!server.isAgentId(agent) || !boardEmpty(main)) return;
+  const name = server.AGENT_NAMES[agent];
+  const prompt = server.handoffPrompt(agent, here === main ? 'node .lore/lore.mjs' : `node ${slashed(main)}/.lore/lore.mjs`);
+  const launch = server.agentLaunch(agent, prompt);
+  if ('file' in launch && process.stdin.isTTY && process.stdout.isTTY) {
+    if (flag('--yes') || (await confirm(`? Open ${name} now to fill the board with you? (Y/n) `))) {
+      console.log(`Starting ${name} here; the board fills in on the HUD as you go.\n`);
+      const run = spawnSync(launch.file, launch.args, { stdio: 'inherit', cwd: here, shell: launch.shell });
+      if (!run.error) return;
+      console.log(`${name} didn't start: ${run.error.message}`);
+    }
+  }
+  const why = 'reason' in launch ? ` (${launch.reason}, so LORE can't start it for you)` : '';
+  console.log(`\nTo fill the board, start ${name} in this folder${why} and give it this prompt:\n\n  ${prompt}\n`);
 }
 
 async function check() {
@@ -634,7 +703,7 @@ async function uninstall() {
 
 const USAGE = `lore ${version}
 
-  lore init       install LORE in this repository, privately, and wire the agents it finds
+  lore init       install LORE in this repository, privately, wire the agents it finds, and hand off to the default one
   lore sync       regenerate the files LORE generates, after editing lore/LORE.md
   lore check      report generated files that are missing or stale (exit 1)
   lore update     refresh LORE's runtime and generated files: run the new version (npx @dall337/lore@latest update)
@@ -651,11 +720,11 @@ const USAGE = `lore ${version}
   --dry-run      init, sync: list what would change and write nothing
   --commit       init: share lore/ through the repository (rules in .gitignore, not .git/info/exclude)
   --agents <ids> init: wire exactly these (claude,codex or none) instead of looking for them
-  --yes          init: take the defaults without asking · uninstall --all: don't ask
+  --yes          init: take the defaults without asking (in a terminal, that starts the default agent) · uninstall --all: don't ask
   --all          uninstall: also your adapted lore/ and the board (never journals)
   --data <dir>   keep the board and settings outside the repository (default <main checkout>/.lore)
   --port <n>     exact port (default: the repository's own stable port)
-  --no-open      don't open the browser
+  --no-open      don't open the browser · init: don't start and open the HUD at the end (sessions start it)
   --foreground   keep the HUD in this terminal (Ctrl+C stops it)`;
 
 if (command === 'init' || command === 'sync') {

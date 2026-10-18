@@ -38,7 +38,9 @@ terminal (Ctrl+C stops it).
   brief, starts the HUD in the background if it isn't running (no browser
   tab), and keeps LORE's generated files current. `"autostart": false` in
   `config.json` stops it starting the HUD. `.lore/hud` opens the page
-  without `lore` on your PATH.
+  without `lore` on your PATH. `lore init` itself starts the HUD and
+  opens it once, at the end (`--no-open` skips that). `BROWSER=none`
+  stops any `lore` command from opening a tab.
 
 `--data <dir>` keeps the board and settings in a folder outside the
 repository instead of `<repo>/.lore/`. The repository is then only read:

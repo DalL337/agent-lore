@@ -18,7 +18,7 @@ import { createRepoState } from './repo.ts';
 export { getJson, resolveConfig, type HudConfig, type HudInstance };
 export { applyPlan, checkouts, checkRepo, describePlan, InitError, locate, pending, planInit, planWorktree, suiteDrift, type InitPlan } from './init.ts';
 export { planUninstall } from './uninstall.ts';
-export { AGENT_IDS, AGENT_NAMES, detectAgents, isAgentId, onPath } from './agents.ts';
+export { AGENT_IDS, AGENT_NAMES, agentLaunch, detectAgents, handoffPrompt, isAgentId, onPath } from './agents.ts';
 
 export interface StartOptions {
   repo: string;
@@ -154,7 +154,8 @@ export async function brief(options: { repo: string; data?: string; cli?: string
   try {
     board = await store.peek();
     if (!board) {
-      out.push(`No board yet. Ask the owner whether to bootstrap one, or run \`${hud}\` to start an empty board.`);
+      const policy = m.policies.find((p) => p.name === 'board');
+      out.push(`No board yet. Ask the owner whether to bootstrap one${policy ? ` (${policy.path} §3)` : ''}; the board file is written with its first card.`);
     } else if (board.cards.length === 0) {
       out.push(`The board is empty: bootstrap it with the owner (read the repository, propose areas and cards, write what they approve).`);
     } else {

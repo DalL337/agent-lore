@@ -94,7 +94,7 @@ try {
   const dry = run(scratch, 'init', '--dry-run');
   check('lore init --dry-run lists the changes and writes nothing', dry.code === 0 && /would copy \d+ files/.test(dry.out) && !existsSync(path.join(scratch, 'lore')) && clean());
 
-  const init = run(scratch, 'init', '--yes');
+  const init = run(scratch, 'init', '--yes', '--no-open');
   check(
     'lore init installs LORE and git status stays empty',
     init.code === 0 && existsSync(path.join(scratch, 'lore', 'LORE.md')) && existsSync(path.join(scratch, 'AGENTS.override.md')) && clean(),
@@ -139,7 +139,7 @@ try {
   execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.test', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: wired });
   const clean = () => execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: wired, encoding: 'utf8' }) === '';
 
-  const init = run(wired, 'init', '--agents', 'claude,codex', '--yes');
+  const init = run(wired, 'init', '--agents', 'claude,codex', '--yes', '--no-open');
   const settings = JSON.parse(await readFile(path.join(wired, '.claude', 'settings.local.json'), 'utf8').catch(() => '{}'));
   check(
     'lore init --agents wires both: runtime, launcher, hooks; git status empty',
@@ -210,6 +210,35 @@ try {
   await rm(memoryDir, { recursive: true, force: true }).catch(() => {});
 }
 
+// The end of init: the HUD once, then the hand-off while the board is empty.
+const handed = await mkdtemp(path.join(tmpdir(), 'lore-handoff-e2e-'));
+let handedPid = null;
+try {
+  execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: handed });
+  execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.test', 'commit', '-q', '--allow-empty', '-m', 'init'], { cwd: handed });
+  // No terminal here, as when a script or an agent runs init; BROWSER=none: no tab.
+  const initAt = () => spawnSync(process.execPath, [bin, 'init', '--agents', 'claude', '--yes'], { cwd: handed, encoding: 'utf8', timeout: 60_000, env: { ...process.env, CI: '', BROWSER: 'none' } });
+  const first = initAt();
+  const out = `${first.stdout}${first.stderr}`;
+  handedPid = JSON.parse(await readFile(path.join(handed, '.lore', 'hud.json'), 'utf8').catch(() => 'null'))?.pid ?? null;
+  check('lore init ends by starting the HUD', first.status === 0 && /^HUD → http:\/\/127\.0\.0\.1:\d+$/m.test(out) && handedPid !== null && alive(handedPid), out.split('\n').find((l) => l.startsWith('HUD')) ?? out);
+  check(
+    '…then prints the hand-off prompt for the default agent (no terminal to start it in)',
+    /To fill the board, start Claude Code in this folder/.test(out) && /^  LORE was just installed .*node \.lore\/lore\.mjs memory seed/m.test(out),
+  );
+  const { url } = JSON.parse(await readFile(path.join(handed, '.lore', 'hud.json'), 'utf8'));
+  const { columns } = await (await fetch(`${url}/api/board`)).json();
+  const made = await fetch(`${url}/api/board/card`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ card: { title: 'Ship it', column: columns[0].id } }) });
+  const again = initAt();
+  check('once the board has cards, init offers no hand-off and leaves the HUD be', made.ok && again.status === 0 && !/To fill the board/.test(again.stdout) && !/^HUD →/m.test(again.stdout), made.ok ? '' : `card: ${made.status}`);
+} catch (err) {
+  check('hand-off run', false, err.message);
+} finally {
+  if (handedPid && alive(handedPid)) process.kill(handedPid);
+  await new Promise((r) => setTimeout(r, 300));
+  await rm(handed, { recursive: true, force: true }).catch(() => {});
+}
+
 // Worktrees through git's own hook, update, and uninstall back to exactly where it started.
 const fresh = await mkdtemp(path.join(tmpdir(), 'lore-uninstall-e2e-'));
 const branch = `${fresh}-feature`;
@@ -241,7 +270,7 @@ try {
   gitAt(fresh, 'commit', '-q', '-m', 'init');
   const before = snapshot(fresh);
 
-  run(fresh, 'init', '--agents', 'claude,codex', '--yes');
+  run(fresh, 'init', '--agents', 'claude,codex', '--yes', '--no-open');
   const added = gitAt(fresh, 'worktree', 'add', '-b', 'feature', branch);
   const copy = await readFile(path.join(branch, 'lore', 'LORE.md'), 'utf8').catch(() => '');
   check(
