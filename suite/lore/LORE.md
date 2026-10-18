@@ -1,4 +1,4 @@
-# AGENTS.md — Agent Governance Entry Point
+# LORE.md — Agent Governance Entry Point
 
 > **Seed suite.** This governance suite was adopted from LORE — Living
 > Operational Rules & Evidence — and is expected to diverge. It is
@@ -17,12 +17,12 @@ Order of authority:
 1. **Enforcement code** — guards, CI checks, and any ratified automated
    gate. The enforced floor. When prose and enforcement disagree, the
    enforcement wins and the prose gets fixed. The suite ships its first
-   guard: `scripts/memory-lint.mjs`, which checks memory-web form
-   (`policies/memory.md` §4). It is the model for what earned enforcement
+   guard: `lore/scripts/memory-lint.mjs`, which checks memory-web form
+   (`lore/policies/memory.md` §4). It is the model for what earned enforcement
    looks like — as rules prove out, they graduate from prose to guards.
 2. **This file** — repository-wide process policy and the dispatch maps
    below.
-3. **`policies/*`** — scoped procedures. Mandatory when a dispatch row
+3. **`lore/policies/*`** — scoped procedures. Mandatory when a dispatch row
    matches the task; they own execution detail within their scope.
 4. **Agent judgment** — governs everything the above does not. Judgment is
    not a fallback of last resort; it is the default state of an
@@ -36,11 +36,11 @@ An agent's first question is which map applies.
 
 If this repository has no established stack (no tooling register exists):
 
-1. Load `policies/tooling.md`. Take the owner's PRD, or create one first.
+1. Load `lore/policies/tooling.md`. Take the owner's PRD, or create one first.
 2. Research candidates, build the tooling proposal, present it. The
    owner's decisions birth the **tooling register** — the living record
    every future stack question references.
-3. Load `policies/memory.md`. Resolve the memory configuration (§5), use
+3. Load `lore/policies/memory.md`. Resolve the memory configuration (§5), use
    the established system when one exists, and bootstrap the bundled web
    only when that is the chosen backend.
 4. Scaffold. Steady state begins.
@@ -54,19 +54,19 @@ execution error.
 
 | When the task involves… | Load and follow |
 |---|---|
-| First contact with this repo; configuring, reading, or writing repository memory | `policies/memory.md` — resolve the configured web entry point (§5), then walk the relevant rings; bootstrap the bundled files only when selected |
-| Research, investigation, debugging, architecture discovery, repository exploration, documentation review, root-cause analysis | `policies/research.md` — **before the first tool call** (journal-first) |
-| Writing or changing code (any language) | `policies/implementation.md` |
-| Branching, committing, pushing, opening PRs | `policies/git.md` |
-| Preparing any PR, completing a milestone/slice, changing an API or architecture boundary | `policies/verification.md` |
-| Creating or updating repo documents (ADRs, plans, briefs, PRDs, notes) | `policies/documentation.md` |
-| Release work: version bumps, bundling, release builds | `policies/release.md` |
-| Security-relevant work: new execution/network surface, supply-chain features, audit passes | `policies/security.md` |
-| Owner-requested adversarial deep dive; creating or changing an enforcement point or a guarantee about state ownership, lifetime, or ordering | `policies/adversarial-check.md` — trace the guarantee through the system before calling the slice done or opening its PR |
-| Owner-invoked creative mode; exploring an inventive direction, an unusual connection, or an unfinished idea | `policies/creative.md` — develop possibilities with the owner; evaluation begins when requested |
-| More than one agent may touch this repo; starting or ending a session in a shared repo; handing work off | `policies/orchestration.md` (with `policies/memory.md`) |
-| Starting, moving, or finishing a unit of work when the board is the work-status record; filling an empty board | `policies/board.md` |
-| Adding, upgrading, or replacing dependencies, frameworks, or languages; any stack question | `policies/tooling.md` |
+| First contact with this repo; configuring, reading, or writing repository memory | `lore/policies/memory.md` — resolve the configured web entry point (§5), then walk the relevant rings; bootstrap the bundled files only when selected |
+| Research, investigation, debugging, architecture discovery, repository exploration, documentation review, root-cause analysis | `lore/policies/research.md` — **before the first tool call** (journal-first) |
+| Writing or changing code (any language) | `lore/policies/implementation.md` |
+| Branching, committing, pushing, opening PRs | `lore/policies/git.md` |
+| Preparing any PR, completing a milestone/slice, changing an API or architecture boundary | `lore/policies/verification.md` |
+| Creating or updating repo documents (ADRs, plans, briefs, PRDs, notes) | `lore/policies/documentation.md` |
+| Release work: version bumps, bundling, release builds | `lore/policies/release.md` |
+| Security-relevant work: new execution/network surface, supply-chain features, audit passes | `lore/policies/security.md` |
+| Owner-requested adversarial deep dive; creating or changing an enforcement point or a guarantee about state ownership, lifetime, or ordering | `lore/policies/adversarial-check.md` — trace the guarantee through the system before calling the slice done or opening its PR |
+| Owner-invoked creative mode; exploring an inventive direction, an unusual connection, or an unfinished idea | `lore/policies/creative.md` — develop possibilities with the owner; evaluation begins when requested |
+| More than one agent may touch this repo; starting or ending a session in a shared repo; handing work off | `lore/policies/orchestration.md` (with `lore/policies/memory.md`) |
+| Starting, moving, or finishing a unit of work when the board is the work-status record; filling an empty board | `lore/policies/board.md` |
+| Adding, upgrading, or replacing dependencies, frameworks, or languages; any stack question | `lore/policies/tooling.md` |
 
 A task matching multiple rows loads multiple policies. A code slice that
 ends in a PR loads implementation + git + verification; an investigation
@@ -75,7 +75,7 @@ loads tooling + security + git.
 
 > **Addendum (2026-10-17, provider memory areas):** Where a harness lets
 > the agent write its own memory index, loading a policy also opens that
-> policy's area from the index's hub (`policies/memory.md` §0).
+> policy's area from the index's hub (`lore/policies/memory.md` §0).
 
 ## 3. Provenance and Accumulation
 
@@ -98,7 +98,7 @@ origins.
 
 **Amendment discipline:** accepted rules grow by dated addenda and
 corrections, never silent rewrites. History stays legible in the document
-itself. (Full conventions: `policies/documentation.md`.)
+itself. (Full conventions: `lore/policies/documentation.md`.)
 
 **Housekeeping:** keep this suite free of personal or account data —
 names, email addresses, account IDs, machine paths, third-party
@@ -107,8 +107,8 @@ artifacts (PR numbers, scripts, ADRs). Identity values live in local
 config and agent memory, never in these files.
 
 > **Addendum (2026-10-01, owner-directed policy expansion):** Added
-> `policies/creative.md` for collaborative exploration and
-> `policies/adversarial-check.md` for investigation of concrete guarantees.
+> `lore/policies/creative.md` for collaborative exploration and
+> `lore/policies/adversarial-check.md` for investigation of concrete guarantees.
 > Their dispatch rows above define the triggers. Creative exploration
 > moves into evaluation when the owner asks for it or selects a concrete
 > proposal to develop.
@@ -131,15 +131,25 @@ config and agent memory, never in these files.
 > it, and anything another agent needs stays in the shared layer. Where
 > the agent writes the provider's index, that index is a links-only hub
 > over areas named for the policies, reserved scopes included, checked
-> by `scripts/provider-memory.mjs`. The provider memory table in §5
+> by `lore/scripts/provider-memory.mjs`. The provider memory table in §5
 > records each harness's store and LORE's use of it.
 
 > **Addendum (2026-10-17, instruction budget):** Codex reads at most
 > 32 KiB of `AGENTS.md` files along the path to its working directory and
-> stops reading the rest. `scripts/agents-md-budget.mjs` holds every such
+> stops reading the rest. `lore/scripts/agents-md-budget.mjs` holds every such
 > chain under 30 KiB, leaving room for a global file. When an addendum
 > would push past the budget, move its detail into the policy that owns
 > the scope and leave a pointer here.
+
+> **Addendum (2026-10-18, owner-directed layout):** LORE lives in one
+> folder, `lore/`: this document is `lore/LORE.md`, the one place to edit
+> it, with the policies, scripts, and memory template beside it. Agents
+> reach it through their own instruction files: Claude imports it
+> (`@lore/LORE.md` from `CLAUDE.md` or `CLAUDE.local.md`), and Codex reads
+> a copy that `lore init` generates as `AGENTS.md`, or as
+> `AGENTS.override.md` beside a project's own `AGENTS.md`. Edit this file,
+> never the generated copies. References to "LORE.md" mean this document;
+> `AGENTS.md` means the agents' file itself.
 
 ## 4. Reserved Scopes
 
@@ -153,12 +163,12 @@ judgment and this file, and when a lesson emerges, codify it there (with
 provenance) rather than growing this file.
 
 New scopes are allowed. When the first rule of a new kind needs a home,
-create the stub in `policies/reserved/`, add its dispatch row, and place
+create the stub in `lore/policies/reserved/`, add its dispatch row, and place
 the rule.
 
 Two scopes from the ancestor suite were retired on generalization, their
-duties absorbed: **dependency-change** lives in `policies/tooling.md`
-(steady-state arm); **handoff** lives in `policies/orchestration.md` §5.
+duties absorbed: **dependency-change** lives in `lore/policies/tooling.md`
+(steady-state arm); **handoff** lives in `lore/policies/orchestration.md` §5.
 
 ## 5. Adaptation Slots
 
@@ -166,21 +176,21 @@ Read-and-adapt means most of this suite works as shipped, but a handful of
 decisions are the adopting project's to make. Fill these deliberately, and
 early — each is flagged at its site:
 
-- **Tooling register + license allowlist** — `policies/tooling.md` §2.
+- **Tooling register + license allowlist** — `lore/policies/tooling.md` §2.
   The first register entry is the allowlist.
-- **Standard check suite** — `policies/verification.md` Rule 1. Enumerate
+- **Standard check suite** — `lore/policies/verification.md` Rule 1. Enumerate
   the project's actual commands.
-- **Merged-branch stance** (delete vs retain) — `policies/git.md` §1.4.
-- **Version string locations** — `policies/release.md` Rule 1. Enumerate
+- **Merged-branch stance** (delete vs retain) — `lore/policies/git.md` §1.4.
+- **Version string locations** — `lore/policies/release.md` Rule 1. Enumerate
   every file that carries the version.
 - **Memory storage and web entry point** — fill the memory configuration below;
-  `policies/memory.md` §0 owns selection and coexistence. For the bundled
+  `lore/policies/memory.md` §0 owns selection and coexistence. For the bundled
   web, also decide ignored vs committed per its §5. List each harness's
   native memory in the provider memory table below.
-- **Stale-claim threshold** — `policies/orchestration.md` §3.
-- **Markdown lint stance** — `policies/documentation.md` Rule 6.
+- **Stale-claim threshold** — `lore/policies/orchestration.md` §3.
+- **Markdown lint stance** — `lore/policies/documentation.md` Rule 6.
 - **Work status** — memory-node ledgers or the LORE board
-  (`policies/board.md`); record the choice in the memory configuration
+  (`lore/policies/board.md`); record the choice in the memory configuration
   below.
 
 Keep the dispatch table in sync with what actually exists. A row pointing
@@ -197,11 +207,11 @@ the bundled module.
 | Field | Record on adoption |
 |---|---|
 | Storage provider | Bundled LORE files, agent-native/company memory, or an external store. |
-| Web entry point | The repository-relative path, document reference, URI, or supported tool entry point for the repository's navigation hub. The bundled files start at `memory/INDEX.md`. |
+| Web entry point | The repository-relative path, document reference, URI, or supported tool entry point for the repository's navigation hub. The bundled files start at `lore/memory/INDEX.md`. |
 | Navigation mapping | How broad repository categories lead through increasingly specific nodes to authoritative records; use provider links/categories or a thin index that points into the chosen store. |
 | Scope and access | The repository's namespace or area; which agents can read and write; visibility across sessions, worktrees, and clones. |
 | Coordination location | The same backend when it supports shared, verifiable claims; otherwise a separate shared file or service. |
-| Work status | Where each unit of work's status lives: the web's node ledgers, or the LORE board (`.lore/board.json`, `policies/board.md`), whose cards the nodes then link. |
+| Work status | Where each unit of work's status lives: the web's node ledgers, or the LORE board (`.lore/board.json`, `lore/policies/board.md`), whose cards the nodes then link. |
 | History and checks | The chosen provider's update/retention rules and the checks available for its records. |
 | Fallback | An approved alternate location or how unavailable memory is reported; no silent competing store. |
 
@@ -224,5 +234,5 @@ and remove rows for harnesses this project does not use.
 
 | Harness | Native memory | Written by | Load cap | LORE writes there | Visibility |
 |---|---|---|---|---|---|
-| Claude Code | [Auto memory](https://code.claude.com/docs/en/memory#auto-memory): `~/.claude/projects/<project>/memory/`, a `MEMORY.md` index with one file per memory. On by default. | The agent, during sessions | First 200 lines or 25KB of `MEMORY.md` each session; other files on demand | The hub and area indexes, links only, checked by `scripts/provider-memory.mjs` | One machine; shared by the repository's worktrees |
-| Codex | [Memories](https://developers.openai.com/codex/memories): `~/.codex/memories/`, or under `CODEX_HOME`. Off by default. | Codex, in the background from past chats | Summary truncated to about 2,500 tokens ([openai/codex#48679](https://github.com/openai/codex/issues/48679)); `AGENTS.md` chain 32 KiB | Nothing; `AGENTS.md` is the pointer channel, held under 30 KiB by `scripts/agents-md-budget.mjs` | One machine; repository scoping undocumented |
+| Claude Code | [Auto memory](https://code.claude.com/docs/en/memory#auto-memory): `~/.claude/projects/<project>/memory/`, a `MEMORY.md` index with one file per memory. On by default. | The agent, during sessions | First 200 lines or 25KB of `MEMORY.md` each session; other files on demand | The hub and area indexes, links only, checked by `lore/scripts/provider-memory.mjs` | One machine; shared by the repository's worktrees |
+| Codex | [Memories](https://developers.openai.com/codex/memories): `~/.codex/memories/`, or under `CODEX_HOME`. Off by default. | Codex, in the background from past chats | Summary truncated to about 2,500 tokens ([openai/codex#48679](https://github.com/openai/codex/issues/48679)); `AGENTS.md` chain 32 KiB | Nothing; `AGENTS.md` is the pointer channel, held under 30 KiB by `lore/scripts/agents-md-budget.mjs` | One machine; repository scoping undocumented |

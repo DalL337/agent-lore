@@ -1,6 +1,6 @@
 # Git Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load when branching,
+Scoped agent-governance procedure (LORE.md §1/§2). Load when branching,
 committing, pushing, or opening PRs.
 
 ## 1. Branch Lifecycle
@@ -71,7 +71,7 @@ structurally impossible.
 
 Group by intent: code changes separate from docs; docs and plans in their
 own commit; release bumps in their own commit, last (see
-`policies/release.md`).
+`lore/policies/release.md`).
 
 ## 4. Pre-Push Checklist
 
@@ -81,8 +81,8 @@ own commit; release bumps in their own commit, last (see
 - Review staged files (`git status --short`).
 - Ensure commit scope matches the file set — and after committing, read
   the files-changed count in the commit output
-  (`policies/verification.md` Rule 3).
-- Run the relevant checks for code changes (`policies/verification.md`).
+  (`lore/policies/verification.md` Rule 3).
+- Run the relevant checks for code changes (`lore/policies/verification.md`).
 
 ## 5. Commit Identity
 

@@ -1,6 +1,6 @@
 # Tooling Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load at repository
+Scoped agent-governance procedure (LORE.md §1/§2). Load at repository
 birth, and afterward for any dependency addition, upgrade, replacement,
 framework adoption, or language question. This policy owns the former
 standalone dependency-change scope.
@@ -15,11 +15,11 @@ The user wants to make a thing. The path from that want to a stack:
 
 1. **PRD first.** Take the owner's PRD if one exists; if not, create one
    with the owner before any tooling research
-   (`policies/documentation.md` for the document kind). The PRD is the
+   (`lore/policies/documentation.md` for the document kind). The PRD is the
    constraint set — platforms, performance envelope, team shape,
    licensing posture, longevity expectations. Tooling serves the PRD,
    never the reverse.
-2. **Load `policies/research.md`.** Journal-first: tooling selection is an
+2. **Load `lore/policies/research.md`.** Journal-first: tooling selection is an
    investigation and follows every research rule.
 3. **Enumerate candidates** for each layer the PRD implies: language(s),
    framework(s), runtime dependencies, build tooling, test tooling.
@@ -48,7 +48,7 @@ builds with and why. All future stack questions reference it first.
   pinning policy, license, decision date, and a link to the rationale
   (proposal, journal, or ADR).
 - The register follows amendment discipline
-  (`policies/documentation.md`): dated addenda, struck-and-stamped
+  (`lore/policies/documentation.md`): dated addenda, struck-and-stamped
   supersessions, never silent rewrites. A register you can read
   chronologically is a register you can trust.
 
@@ -63,7 +63,7 @@ Weigh every candidate — bootstrap or steady state — on:
   migration.
 - **Security posture** — advisory history, supply-chain surface,
   install-time behavior. Standing trust rules apply
-  (`policies/security.md`): no silent downloads, pinned exact versions
+  (`lore/policies/security.md`): no silent downloads, pinned exact versions
   over `latest`, provenance is not by itself a safety signal.
 - **Fit with the existing stack** — steady state only. The register says
   what already exists; a candidate that duplicates a capability already
@@ -114,11 +114,11 @@ addition may take the fast path when **all** of the following hold:
 Fast path procedure: the agent adds the dependency and its register
 entry in the same unit of work, the entry marked `fast path` and
 recording the condition check. That recorded check stands as the
-security review for the addition (`policies/security.md` Rule 1), and
+security review for the addition (`lore/policies/security.md` Rule 1), and
 the owner's PR review is the decision — no separate proposal round.
 
 Any condition unclear or failing → the full loop, and
-`policies/security.md` loads. When in doubt, the doubt is the answer:
+`lore/policies/security.md` loads. When in doubt, the doubt is the answer:
 full loop.
 
 ## 5. Research Standards

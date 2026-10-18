@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// memory-lint.mjs — the suite's first guard (AGENTS.md §1/§3).
+// memory-lint.mjs — the suite's first guard (LORE.md §1/§3).
 //
-// Checks the FORM of the memory web defined in policies/memory.md:
-//   E1  memory/ exists but the hub (memory/INDEX.md) does not
+// Checks the FORM of the memory web defined in lore/policies/memory.md. The
+// web lives in lore/memory/ (or memory/ in a repository that copied the
+// suite into its root):
+//   E1  the memory folder exists but its hub (INDEX.md) does not
 //   E2  struck-through content (~~…~~) without a YYYY-MM-DD stamp on the entry
 //   E3  malformed CLAIM  (need "CLAIM YYYY-MM-DDTHH:MM — <id> — scope: …")
 //   E4  malformed RELEASE (need "RELEASE YYYY-MM-DD — <id> — …")
@@ -13,7 +15,7 @@
 // What it cannot check: append-only itself. A stateless lint sees form,
 // not history; that discipline remains on the agent.
 //
-// Zero dependencies. Usage:  node scripts/memory-lint.mjs [repo-root] [--strict]
+// Zero dependencies. Usage:  node lore/scripts/memory-lint.mjs [repo-root] [--strict]
 // Exit 1 on errors; --strict also fails warnings.
 // The checks are the policy; the implementation is fungible — port this
 // to your stack's language if Node isn't available.
@@ -24,7 +26,8 @@ import { join, relative } from 'node:path';
 const args = process.argv.slice(2);
 const STRICT = args.includes('--strict');
 const ROOT = args.find((a) => !a.startsWith('--')) ?? '.';
-const MEM = join(ROOT, 'memory');
+const MEM = [join(ROOT, 'lore', 'memory'), join(ROOT, 'memory')].find((d) => existsSync(d)) ?? join(ROOT, 'lore', 'memory');
+const MEM_REL = relative(ROOT, MEM).split(/[\\/]/).join('/');
 const VOCAB = new Set(['planned', 'in-progress', 'blocked', 'done', 'deprecated']);
 const DATE = /\d{4}-\d{2}-\d{2}/;
 
@@ -32,11 +35,11 @@ const errors = [];
 const warnings = [];
 
 if (!existsSync(MEM)) {
-  console.log('memory-lint: no memory/ directory — nothing to check.');
+  console.log('memory-lint: no lore/memory/ (or memory/) folder — nothing to check.');
   process.exit(0);
 }
 if (!existsSync(join(MEM, 'INDEX.md'))) {
-  errors.push(['E1', 'memory/INDEX.md', 0, 'memory/ exists but the hub (INDEX.md) does not']);
+  errors.push(['E1', `${MEM_REL}/INDEX.md`, 0, `${MEM_REL}/ exists but its hub (INDEX.md) does not`]);
 }
 
 function* mdFiles(dir) {

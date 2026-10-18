@@ -19,16 +19,22 @@ jobs:
 
       # Node is preinstalled on ubuntu-latest and memory-lint.mjs is
       # zero-dependency, so this workflow installs nothing.
+      # suite/ ships in its installed shape: suite/lore/ is what a repository
+      # gets as lore/.
       - name: Lint the shipped template hub
-        run: node suite/scripts/memory-lint.mjs suite --strict
+        run: node suite/lore/scripts/memory-lint.mjs suite --strict
 
       # There is no provider store in CI, so seed one from the shipped
       # policies and check it: the seeding and the checks can't drift
       # apart, and a renamed policy can't strand its area.
       - name: Seed and check a provider memory hub
         run: |
-          node suite/scripts/provider-memory.mjs init "$RUNNER_TEMP/provider-memory" --repo suite
-          node suite/scripts/provider-memory.mjs check "$RUNNER_TEMP/provider-memory" --repo suite --strict
+          node suite/lore/scripts/provider-memory.mjs init "$RUNNER_TEMP/provider-memory" --repo suite
+          node suite/lore/scripts/provider-memory.mjs check "$RUNNER_TEMP/provider-memory" --repo suite --strict
 
-      - name: Keep the shipped AGENTS.md inside Codex's read limit
-        run: node suite/scripts/agents-md-budget.mjs suite
+      # Codex reads LORE.md as a generated AGENTS.md: measure it that way.
+      - name: Keep LORE.md inside Codex's read limit
+        run: |
+          mkdir -p "$RUNNER_TEMP/budget"
+          cp suite/lore/LORE.md "$RUNNER_TEMP/budget/AGENTS.md"
+          node suite/lore/scripts/agents-md-budget.mjs "$RUNNER_TEMP/budget"

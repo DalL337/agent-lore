@@ -1,6 +1,6 @@
 # Documentation Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load when creating
+Scoped agent-governance procedure (LORE.md §1/§2). Load when creating
 or updating repo documents — ADRs, briefs, plans, RFCs, PRDs, notes.
 
 ## Rule 1 — Document Kinds: Home, Scope, Naming
@@ -14,9 +14,9 @@ don't blend scopes.
 | Brief / design doc | `docs/plans/**/brief-<topic>.md` | The full design: investigation evidence, mechanisms, trade-offs, open questions. May precede its ADR. |
 | Build plan | `docs/plans/<area>/…-build-plan.md` | Delivery slices, each with Goal / Tasks / Tests / Acceptance. Owns sequencing, not decisions. |
 | RFC / PRD | `docs/rfcs/`, `docs/prds/` | Early-shape proposals and product requirements. When an ADR supersedes parts of one, add a dated supersession note to the old doc — never silently rewrite it. |
-| Tooling register | `docs/TOOLING.md` | The stack and its rationale (`policies/tooling.md` §2). |
-| Research journal | `.research/<date>-<task>.md` (gitignored) | Investigation state per `policies/research.md`. Never a home for repo-facing content. |
-| Memory | Entry point configured in AGENTS.md §5; bundled default is `memory/**` (gitignored) | Operational records per `policies/memory.md` §0; canonical repo-facing docs stay in their documented homes. |
+| Tooling register | `docs/TOOLING.md` | The stack and its rationale (`lore/policies/tooling.md` §2). |
+| Research journal | `.research/<date>-<task>.md` (gitignored) | Investigation state per `lore/policies/research.md`. Never a home for repo-facing content. |
+| Memory | Entry point configured in LORE.md §5; bundled default is `lore/memory/**` (gitignored) | Operational records per `lore/policies/memory.md` §0; canonical repo-facing docs stay in their documented homes. |
 
 Adapt homes and naming to the project's layout on adoption — then keep
 this table true.
@@ -49,7 +49,7 @@ the stack. A copied list is a future contradiction.
 Date status changes and addenda. Attribute decisions ("owner decision,
 date"). Name the PR that delivered a slice. When a document records an
 empirical finding, say how it was verified. (This is the accumulation
-convention of AGENTS.md §3 applied to all documents, not just policy.)
+convention of LORE.md §3 applied to all documents, not just policy.)
 
 ## Rule 5 — Documents Live in the Working Tree
 
@@ -63,7 +63,7 @@ journals, which are governed by their own policies. When sharing a link
 to a doc on an unmerged branch, prefer the PR "Files" URL over a branch
 blob URL, and say explicitly the doc is pending merge.
 
-Docs ride with their code (`policies/git.md` §2.3): a doc describing
+Docs ride with their code (`lore/policies/git.md` §2.3): a doc describing
 unmerged behavior belongs on that branch, not the default branch.
 
 ## Rule 6 — Lint Stance

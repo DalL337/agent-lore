@@ -59,49 +59,50 @@ putting them there. Take it and let it fill up with yours.
 
 The transferable part is the method — dispatch-table policy loading,
 provenance-carrying rules, append-only memory, claim-based orchestration
-— not the specifics. Copy it into a project, point agents at
-`AGENTS.md`, and let it diverge.
+— not the specifics. Copy `lore/` into a project, point your agents at
+`lore/LORE.md`, and let it diverge.
 
 ## Adopting
 
-**Copy the contents of `suite/` into your repository root** — with two
-exceptions. `claude-settings-additions.json` is merged into
-`.claude/settings.json` when Claude Code works in the repository (see
-Choose the Memory Home). `gitignore-additions.txt` holds default-location
-rules you *append* to the `.gitignore` you already have when those
-locations are used:
+*Layout as of 2026-10-18.* LORE lives in one folder, `lore/`, inside your
+repository, and stays private by default. `lore init` (the next release)
+will do all of this in one command; until then, by hand:
 
-```gitignore
-/memory/      # agent memory web (policies/memory.md §5)
-/.research/   # research journals (policies/research.md)
-```
-
-Keep the leading slashes. Unanchored, `memory/` matches at every level
-and would silently ignore a `src/memory/` module in your own source tree.
-
-Then:
-
-1. Read `AGENTS.md` §5 and fill the adopt-time slots, including the memory
-   backend and entry point. Use an established company or agent memory
-   system when one is already chosen.
-2. Greenfield project: run the tooling bootstrap (`policies/tooling.md`
-   §1). Existing project: seed the register per `policies/tooling.md` §6
-   — load-bearing decisions now, the rest by contact — then orient through
-   the configured memory. Bootstrap the bundled web when it is selected.
-3. Delete what doesn't fit. Keep the dispatch table true.
+1. **Copy `suite/lore/` into your repository as `lore/`.**
+2. **Keep it private.** Add the rules in `lore/exclude-additions.txt` to
+   `.git/info/exclude` (local to your clone, never committed), or to
+   `.gitignore` if you want the rules themselves shared. Keep the leading
+   slashes: unanchored, `lore/` would also hide a `src/lore/` of your own.
+3. **Point your agents at `lore/LORE.md`**, the one copy you edit:
+   - **Claude Code:** a `CLAUDE.md` containing the line `@lore/LORE.md`
+     (or a `CLAUDE.local.md`, if your `CLAUDE.md` is committed).
+   - **Codex** reads `AGENTS.md` and has no imports: make `AGENTS.md` a
+     copy of `lore/LORE.md` with its relative links prefixed `lore/`. If
+     your repository already commits an `AGENTS.md`, put your content plus
+     that copy in `AGENTS.override.md` instead; Codex reads the override
+     in its place.
+4. Read `lore/LORE.md` §5 and fill the adopt-time slots, including the
+   memory backend and entry point. Use an established company or agent
+   memory system when one is already chosen.
+5. Greenfield project: run the tooling bootstrap
+   (`lore/policies/tooling.md` §1). Existing project: seed the register per
+   `lore/policies/tooling.md` §6 — load-bearing decisions now, the rest by
+   contact — then orient through the configured memory. Bootstrap the
+   bundled web when it is selected.
+6. Delete what doesn't fit. Keep the dispatch table true.
 
 ### Choose the Memory Home
 
 *Added 2026-10-02.* The bundled memory module is optional. Point LORE at
 the agent's existing memory, a company memory system, the bundled link
 web, or a separate shared file, document, or service. Record the entry
-point and access method in `AGENTS.md` §5, or point that section at the
+point and access method in `lore/LORE.md` §5, or point that section at the
 existing configuration document.
 
 Existing company and provider conventions continue to govern their stores.
 LORE does not require a replacement module or a duplicate map. When agent
 memory is private, choose a shared coordination location for claims and
-handoffs. Full selection and coexistence rules: `policies/memory.md` §0.
+handoffs. Full selection and coexistence rules: `lore/policies/memory.md` §0.
 
 > **Clarification (2026-10-02, owner definition of the web):** Preserve the
 > navigation: a repository hub leads through relevant categories, with
@@ -115,29 +116,30 @@ handoffs. Full selection and coexistence rules: `policies/memory.md` §0.
 > such as Claude Code's auto memory or Codex memories, stays in place as a
 > private layer under its provider's rules. LORE writes only pointers into
 > it and keeps shared knowledge out of it. List each harness in the
-> provider memory table in `AGENTS.md` §5.
+> provider memory table in `lore/LORE.md` §5.
 >
 > Where the agent writes that memory's always-loaded index (Claude Code's
 > `MEMORY.md`, capped at 200 lines or 25KB), the index is a links-only
 > hub over areas named for the policies, reserved scopes included. Seed
-> it with `node scripts/provider-memory.mjs init <memory-dir>`, then merge
-> `claude-settings-additions.json` into `.claude/settings.json` so each
-> memory write is checked. An existing index with prose in it is migrated
-> first; `init` refuses to touch one.
+> it with `node lore/scripts/provider-memory.mjs init <memory-dir>`, then
+> merge `lore/claude-settings-additions.json` into
+> `.claude/settings.local.json` (your personal, uncommitted settings) so
+> each memory write is checked. An existing index with prose in it is
+> migrated first; `init` refuses to touch one.
 
-The ignore snippet above describes the default local directories; append
-the rules needed for the locations you use. The shipped memory guard checks
-the bundled web's format; it does not validate a different provider.
+The shipped memory guard checks the bundled web's format; it does not
+validate a different provider.
 
-## What's in `suite/` — the part you copy
+## What's in `suite/lore/` — the part you copy
 
-- **`AGENTS.md`** — the agent entry point: authority order, the
+`suite/` ships in its installed shape: `suite/lore/` becomes `lore/` in
+your repository.
+
+- **`LORE.md`** — the agent entry point: authority order, the
   greenfield map (PRD → tooling research → memory selection → scaffold),
   the steady-state dispatch table, the rule-accumulation loop, reserved
-  scopes, and the adopt-time slots.
-- **`CLAUDE.md`** — imports `AGENTS.md` (`@AGENTS.md`) so Claude Code
-  loads it; Claude Code reads `AGENTS.md` on its own only when no
-  `CLAUDE.md` exists.
+  scopes, and the adopt-time slots. Agents reach it through their own
+  instruction files (see Adopting).
 - **`policies/`** — scoped procedures, loaded per-task:
   research · implementation · git · verification · documentation ·
   release · security · **orchestration** (multi-agent coordination) ·
@@ -164,18 +166,18 @@ the bundled web's format; it does not validate a different provider.
   with a hook mode that checks each memory write in Claude Code (added
   2026-10-17).
 - **`claude-settings-additions.json`** — the hook that runs that check,
-  as a snippet to merge into `.claude/settings.json`.
+  as a snippet to merge into `.claude/settings.local.json`.
 - **`scripts/agents-md-budget.mjs`** — the third guard: holds every chain
   of `AGENTS.md` files under 30 KiB, inside the 32 KiB Codex reads
   (added 2026-10-17).
 - **`memory/INDEX.md`** — a seeded, empty hub for the optional bundled web.
-- **`gitignore-additions.txt`** — the two ignore rules, as a snippet that
-  cannot clobber your `.gitignore` by being copied.
+- **`exclude-additions.txt`** — the paths that keep LORE private, for
+  `.git/info/exclude` (what `lore init` writes there).
 
 ## The HUD
 
 *Added 2026-10-17.* `lore hud` opens a local, private page for one
-repository: the board agents keep current (`policies/board.md`), the
+repository: the board agents keep current (`lore/policies/board.md`), the
 research journals with their status and policy tags, and an Inbox of open
 PRs, issues, and journals no card tracks yet. Edits agents make to the
 board file show up live. It writes only to `<repo>/.lore/`, or with

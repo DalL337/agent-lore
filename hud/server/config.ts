@@ -44,9 +44,9 @@ interface ConfigFile {
   port?: unknown;
 }
 
-// LORE's installed layout first, then the copy-into-root layout, then this
-// repository's own source tree.
-const POLICY_DIRS = ['lore/policies', 'policies', 'suite/policies'];
+// LORE's installed layout first, then the older copy-into-root layout, then
+// this repository's own source tree.
+const POLICY_DIRS = ['lore/policies', 'policies', 'suite/lore/policies'];
 
 const slashes = (p: string) => p.split(path.sep).join('/');
 const inside = (root: string, full: string) => {

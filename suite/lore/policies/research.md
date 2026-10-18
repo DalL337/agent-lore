@@ -1,6 +1,6 @@
 # Research Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load **before the
+Scoped agent-governance procedure (LORE.md §1/§2). Load **before the
 first tool call** of any task involving research, investigation,
 debugging, architecture discovery, repository exploration, documentation
 review, root-cause analysis, or any task requiring more than a few tool
@@ -44,7 +44,7 @@ authoritative record of the investigation from this moment on.
 still an investigation: it gets its own journal, named to show lineage —
 `.research/<date>-<parent-task>--sub-<label>.md`. The parent links every
 sub-journal from its own journal and from its registry file
-(`policies/memory.md` §3), and on the sub-agent's completion absorbs the
+(`lore/policies/memory.md` §3), and on the sub-agent's completion absorbs the
 conclusions into its `## Current Findings` — by link and summary, not by
 copy. Sub-journals follow every rule in this policy.
 
@@ -106,7 +106,7 @@ journal.
 > **Addendum (2026-10-17, owner-directed policy tags):** Near the top,
 > a journal names the policies loaded for its task on one line:
 > `Policies: research, implementation`. The dispatch table already makes
-> a missed policy an execution error (AGENTS.md §2.2); this line makes
+> a missed policy an execution error (LORE.md §2.2); this line makes
 > the dispatch auditable. The HUD shows declared policies as solid tags
 > and policies a journal only mentions as dotted ones.
 
@@ -120,7 +120,7 @@ everything needed to resume exists inside the journal.
 ## Rule 11 — Link the Journal Into the Web
 
 > **Erratum (2026-10-02, configurable memory):** Resolve the memory entry
-> point in AGENTS.md §5. The node and ledger instructions below apply to
+> point in LORE.md §5. The node and ledger instructions below apply to
 > the bundled web. For another provider, record the journal reference in
 > its appropriate repository area, following that provider's conventions.
 > When the provider is private or read-only, use the configured shared
@@ -128,6 +128,6 @@ everything needed to resume exists inside the journal.
 > detailed evidence record; a second memory module is not required.
 
 When the investigation touches an area with a memory node
-(`policies/memory.md`), append a link to the journal in that node's link
+(`lore/policies/memory.md`), append a link to the journal in that node's link
 table or ledger. The web is how a future agent *finds* the journal; a
 journal only the writing agent knows about has failed half its purpose.

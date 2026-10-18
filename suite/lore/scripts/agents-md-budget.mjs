@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // agents-md-budget.mjs — keeps the AGENTS.md chain inside what Codex reads
-// (AGENTS.md §3 and §5, provider memory table).
+// (LORE.md §3 and §5, provider memory table).
 //
 // Codex reads at most one instruction file per directory, AGENTS.override.md
 // before AGENTS.md, skipping empty files, from the project root down to its
@@ -18,7 +18,7 @@
 // covered.
 //
 // Zero dependencies. Usage:
-//   node scripts/agents-md-budget.mjs [repo-root] [--max <bytes>]
+//   node lore/scripts/agents-md-budget.mjs [repo-root] [--max <bytes>]
 // Exit 1 when any chain is over budget.
 // The checks are the policy; the implementation is fungible.
 

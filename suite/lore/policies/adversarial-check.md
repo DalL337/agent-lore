@@ -1,6 +1,6 @@
 # Adversarial Check Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load for an
+Scoped agent-governance procedure (LORE.md §1/§2). Load for an
 owner-requested adversarial deep dive, or before calling a slice done or
 opening its PR when it creates or changes an enforcement point or a
 guarantee about state ownership, lifetime, or ordering. These are starting
@@ -166,4 +166,4 @@ Planted mistakes remain useful for checking the failures already imagined.
 This pass actively searches for additional failure modes. When a later
 review finds a flaw the pass should have caught, append the project's own
 lesson with its date, provenance, evidence, and the question or tracing
-habit it sharpens, following AGENTS.md §3.
+habit it sharpens, following LORE.md §3.
