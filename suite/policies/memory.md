@@ -106,6 +106,99 @@ claim. Do not silently manufacture another store and treat it as the
 configured source. Overlapping writes require a visible coordination
 record or explicit sequencing through the owner.
 
+### Coexist with Provider-Native Memory
+
+> **Addendum (2026-10-17, owner-directed provider memory):** Agent
+> harnesses keep memory of their own whether or not a project selects
+> it. This subsection governs coexistence. Owner rulings: the provider's
+> conventions win inside its store, except the shape of an index the
+> agent writes; LORE writes only pointers there; that index is a
+> links-only hub over areas named for the policies, reserved scopes
+> included; and the platform registry (§3) stays as coordination
+> identity.
+
+A harness's native memory, whether notes the agent writes for itself or
+memory the harness generates from past sessions, is that harness's
+**private layer**. It runs alongside the configured backend and becomes
+the backend only when the configuration selects it. Keeping it does not
+break the rule above against manufacturing another store; that rule
+covers a substitute treated as the configured source.
+
+**The provider's conventions govern inside its store.** Its record
+format, load limits, update and deletion rules, and its own judgment of
+what is worth keeping apply as the provider defines them. LORE adds one
+requirement where the agent writes the index: the hub shape below. The
+web's identity files (§3) and append-only discipline (§4) stop at the
+store's boundary.
+
+**Keep the layers separate.** The private layer holds what the provider
+keeps for the agent's own later use, such as the owner's working
+preferences and corrections. Anything another agent needs belongs in
+the shared layer: status, claims, releases, handoffs, decisions, and the
+routes to them live in the configured web, its coordination location, a
+task journal, or the repository. The shared layer never depends on a
+private memory for something another agent must know. When a private
+note turns out to matter beyond its harness, promote it: record it in
+the shared layer, or draft it as a rule through the accumulation loop
+(AGENTS.md §3).
+
+**LORE writes pointers, nothing more.** Where a provider lets the agent
+write its memory, the agent may record routes into LORE: the web entry
+point, a node it works from, a journal, the memory configuration. A
+pointer never restates, supersedes, or owns a repository or web record.
+When a pointer and its target disagree, the target is current and the
+pointer is corrected under the provider's rules. A pointer also follows
+the provider's guidance on what to save; a route the project's
+instruction files already give needs no second copy. Where the provider
+generates its memory itself, LORE writes nothing into it, and the
+instruction file the harness reads is the pointer channel. The hub and
+area indexes below are pointers of this kind.
+
+**The index is a hub, not a memory.** Providers load a capped index at
+session start; Claude Code, for one, reads the first 200 lines or 25KB
+of its `MEMORY.md`. Where the agent writes that index, it holds
+headings and links to area indexes, and nothing else: no prose, no
+status, no individual memories. Each area index holds headings, one
+scope line, and links to the topic files that hold the memories, or to
+sub-areas once the area gets crowded. Every topic file is reachable from
+the hub through an area. The cap then bounds the number of areas rather
+than the number of memories, and nothing has to be condensed or cut to
+fit.
+
+**Areas follow the dispatch table.** Each policy has an area named for
+it, such as `area_research.md` for `policies/research.md`, and so does
+each reserved scope in `policies/reserved/`, so the hub shows an agent
+every scope before it has rules. A lesson filed in a reserved area is a
+candidate for that scope's first rule (AGENTS.md §3). An owner area
+holds who the owner is and how they work, and repository areas are
+added as memories about parts of the code need them. When the dispatch
+table loads a policy, open its area as well; open the owner area on
+first contact. When a policy is added, renamed, or removed, its area
+follows, and the check reports an area that has fallen out of step.
+
+**What must apply every session is an instruction, not a memory.** A
+hub link is a route; it does not guarantee a read. A rule that has to
+hold in every session belongs in the instruction files the harness
+always loads, or in a policy through the accumulation loop.
+
+**Form is guard-enforced.** `scripts/provider-memory.mjs init` seeds the
+hub and areas from the policy files and never overwrites a file.
+`check` validates the hub and areas, reachability, link targets, the
+areas' coverage of the policies, and the hub's size against half the
+provider's cap. Its `hook` mode runs after each memory write in Claude
+Code (`claude-settings-additions.json`) and returns findings to the
+agent at once. An index that predates this shape is migrated before the
+hook is enabled, and the migration is an owner decision. Where the
+provider generates its memory itself, LORE neither seeds nor checks it.
+
+**Recall is not coordination.** A private memory of having claimed or
+finished something establishes neither; the shared record does (§3
+self-recognition, [orchestration policy §0](orchestration.md#0-configured-coordination)).
+Native memory is usually local to one machine and readable only by its
+own harness, and its scope may be one repository or every project the
+harness touches. Record each harness's location, scope, and LORE's use
+of it in the [provider memory table](../AGENTS.md#provider-memory).
+
 ### Apply the Matching Checks
 
 The bundled `scripts/memory-lint.mjs` validates the bundled web's file
@@ -164,6 +257,17 @@ ledger gets crowded enough that walkers can't find things — that crowding
 is the signal to split, by appending links to new child nodes.
 
 ## 3. Identity, Registration, and Who Writes
+
+> **Erratum (2026-10-17, owner ruling on the registry):** The platform
+> registry records coordination identity: the exact full id used each
+> session, the model in use, claims, journal links, and sub-agent ids.
+> Its "longitudinal ledger" below is the lineage of that identity, not
+> the platform's continuity store. What an agent keeps for its own later
+> use belongs in its provider memory (§0); the state of a piece of work
+> resumes from its node and journal (`policies/orchestration.md` §5).
+> The self-recognition rule below still holds where a harness keeps
+> native memory: a claim is yours only by the exact id registered this
+> session, never because a private memory recalls taking it.
 
 **Identity is the platform — the harness, not the model.** Claude Code,
 Codex, Grok: whatever agent harness is running is the identity. Models
@@ -315,6 +419,13 @@ worktree from a single canonical location, commit the web, or don't run
 the agents in parallel. Owner call, recorded in the hub.
 
 ## 6. Convention Evolution
+
+> **Addendum (2026-10-17, vendor memory has shipped):** Common harnesses
+> now ship first-party memory, and the alongside case below is the
+> standing arrangement: §0's provider-native subsection governs that
+> memory as a private layer. Making a provider's memory the shared
+> backend, or widening what LORE writes into it beyond pointers, remains
+> an owner decision recorded per §0.
 
 Memory conventions are lab-shaped and will keep changing. If a platform
 vendor (Anthropic, Cursor, or whoever) ships a first-party memory

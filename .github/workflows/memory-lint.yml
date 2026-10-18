@@ -1,5 +1,5 @@
-# Runs the suite's guard against the shipped template hub, so a malformed
-# example can't ship to adopters.
+# Runs the suite's guards against what ships, so a malformed example can't
+# reach adopters.
 name: memory-lint
 
 on:
@@ -21,3 +21,14 @@ jobs:
       # zero-dependency, so this workflow installs nothing.
       - name: Lint the shipped template hub
         run: node suite/scripts/memory-lint.mjs suite --strict
+
+      # There is no provider store in CI, so seed one from the shipped
+      # policies and check it: the seeding and the checks can't drift
+      # apart, and a renamed policy can't strand its area.
+      - name: Seed and check a provider memory hub
+        run: |
+          node suite/scripts/provider-memory.mjs init "$RUNNER_TEMP/provider-memory" --repo suite
+          node suite/scripts/provider-memory.mjs check "$RUNNER_TEMP/provider-memory" --repo suite --strict
+
+      - name: Keep the shipped AGENTS.md inside Codex's read limit
+        run: node suite/scripts/agents-md-budget.mjs suite

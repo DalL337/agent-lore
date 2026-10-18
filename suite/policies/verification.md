@@ -22,6 +22,8 @@ checks" means. The suite should cover, where the stack supports each:
 ```
 # Fill in on adoption, e.g.:
 # node scripts/memory-lint.mjs   — memory web form (ships with the suite)
+# node scripts/provider-memory.mjs check <memory-dir>   — provider memory hub (ships with the suite)
+# node scripts/agents-md-budget.mjs   — AGENTS.md chain under 30 KiB (ships with the suite)
 # npm run check        — guards + build
 # npm run test         — full suite
 # cargo build && cargo test   — zero warnings required

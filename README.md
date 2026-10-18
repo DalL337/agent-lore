@@ -46,9 +46,12 @@ provenance-carrying rules, append-only memory, claim-based orchestration
 
 ## Adopting
 
-**Copy the contents of `suite/` into your repository root** — with one
-exception, `gitignore-additions.txt`, whose default-location rules you
-*append* to the `.gitignore` you already have when those locations are used:
+**Copy the contents of `suite/` into your repository root** — with two
+exceptions. `claude-settings-additions.json` is merged into
+`.claude/settings.json` when Claude Code works in the repository (see
+Choose the Memory Home). `gitignore-additions.txt` holds default-location
+rules you *append* to the `.gitignore` you already have when those
+locations are used:
 
 ```gitignore
 /memory/      # agent memory web (policies/memory.md §5)
@@ -90,6 +93,20 @@ handoffs. Full selection and coexistence rules: `policies/memory.md` §0.
 > or another location. If the provider cannot expose those routes directly,
 > a thin index can point into it while leaving its records authoritative.
 
+> **Addendum (2026-10-17, provider memory):** Each harness's own memory,
+> such as Claude Code's auto memory or Codex memories, stays in place as a
+> private layer under its provider's rules. LORE writes only pointers into
+> it and keeps shared knowledge out of it. List each harness in the
+> provider memory table in `AGENTS.md` §5.
+>
+> Where the agent writes that memory's always-loaded index (Claude Code's
+> `MEMORY.md`, capped at 200 lines or 25KB), the index is a links-only
+> hub over areas named for the policies, reserved scopes included. Seed
+> it with `node scripts/provider-memory.mjs init <memory-dir>`, then merge
+> `claude-settings-additions.json` into `.claude/settings.json` so each
+> memory write is checked. An existing index with prose in it is migrated
+> first; `init` refuses to touch one.
+
 The ignore snippet above describes the default local directories; append
 the rules needed for the locations you use. The shipped memory guard checks
 the bundled web's format; it does not validate a different provider.
@@ -100,8 +117,9 @@ the bundled web's format; it does not validate a different provider.
   greenfield map (PRD → tooling research → memory selection → scaffold),
   the steady-state dispatch table, the rule-accumulation loop, reserved
   scopes, and the adopt-time slots.
-- **`CLAUDE.md`** — a pointer to `AGENTS.md`, for harnesses that look for
-  that filename by convention.
+- **`CLAUDE.md`** — imports `AGENTS.md` (`@AGENTS.md`) so Claude Code
+  loads it; Claude Code reads `AGENTS.md` on its own only when no
+  `CLAUDE.md` exists.
 - **`policies/`** — scoped procedures, loaded per-task:
   research · implementation · git · verification · documentation ·
   release · security · **orchestration** (multi-agent coordination) ·
@@ -120,6 +138,15 @@ the bundled web's format; it does not validate a different provider.
   multiple-live-claim detection). Zero-dependency Node; the checks are
   the policy, the implementation is fungible — port it if your stack
   lacks Node.
+- **`scripts/provider-memory.mjs`** — the second guard: seeds and checks
+  a harness's own memory index as a links-only hub over policy areas,
+  with a hook mode that checks each memory write in Claude Code (added
+  2026-10-17).
+- **`claude-settings-additions.json`** — the hook that runs that check,
+  as a snippet to merge into `.claude/settings.json`.
+- **`scripts/agents-md-budget.mjs`** — the third guard: holds every chain
+  of `AGENTS.md` files under 30 KiB, inside the 32 KiB Codex reads
+  (added 2026-10-17).
 - **`memory/INDEX.md`** — a seeded, empty hub for the optional bundled web.
 - **`gitignore-additions.txt`** — the two ignore rules, as a snippet that
   cannot clobber your `.gitignore` by being copied.

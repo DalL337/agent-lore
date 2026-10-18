@@ -72,6 +72,10 @@ ends in a PR loads implementation + git + verification; an investigation
 that produces an ADR loads research + documentation; a dependency swap
 loads tooling + security + git.
 
+> **Addendum (2026-10-17, provider memory areas):** Where a harness lets
+> the agent write its own memory index, loading a policy also opens that
+> policy's area from the index's hub (`policies/memory.md` §0).
+
 ## 3. Provenance and Accumulation
 
 This suite ships with **no incident history — deliberately.** The rules
@@ -120,6 +124,22 @@ config and agent memory, never in these files.
 > navigation mapping. A thin pointer index can expose those routes over
 > existing agent or company memory without replacing its records.
 
+> **Addendum (2026-10-17, owner-directed provider memory):** A harness's
+> own memory coexists with the configured backend as a private layer
+> governed by its provider's conventions. LORE writes only pointers into
+> it, and anything another agent needs stays in the shared layer. Where
+> the agent writes the provider's index, that index is a links-only hub
+> over areas named for the policies, reserved scopes included, checked
+> by `scripts/provider-memory.mjs`. The provider memory table in §5
+> records each harness's store and LORE's use of it.
+
+> **Addendum (2026-10-17, instruction budget):** Codex reads at most
+> 32 KiB of `AGENTS.md` files along the path to its working directory and
+> stops reading the rest. `scripts/agents-md-budget.mjs` holds every such
+> chain under 30 KiB, leaving room for a global file. When an addendum
+> would push past the budget, move its detail into the policy that owns
+> the scope and leave a pointer here.
+
 ## 4. Reserved Scopes
 
 Empty policy files exist for scopes with no rules yet:
@@ -154,7 +174,8 @@ early — each is flagged at its site:
   every file that carries the version.
 - **Memory storage and web entry point** — fill the memory configuration below;
   `policies/memory.md` §0 owns selection and coexistence. For the bundled
-  web, also decide ignored vs committed per its §5.
+  web, also decide ignored vs committed per its §5. List each harness's
+  native memory in the provider memory table below.
 - **Stale-claim threshold** — `policies/orchestration.md` §3.
 - **Markdown lint stance** — `policies/documentation.md` Rule 6.
 
@@ -185,3 +206,18 @@ provider's own structure or a thin pointer index in another location.
 An external store may be as small as a shared project note with those routes.
 The [memory policy](policies/memory.md#0-configured-memory) defines how
 these choices interact with the suite's default conventions.
+
+### Provider Memory
+
+*(Adopt-time slot, added 2026-10-17.)* One row per harness that works in
+this repository. A harness's native memory is its private layer
+([memory policy §0](policies/memory.md#coexist-with-provider-native-memory)):
+the provider's conventions govern it, and LORE writes only pointers
+there. The seeded rows describe two harnesses as their vendors
+documented them in October 2026. Confirm against current documentation,
+and remove rows for harnesses this project does not use.
+
+| Harness | Native memory | Written by | Load cap | LORE writes there | Visibility |
+|---|---|---|---|---|---|
+| Claude Code | [Auto memory](https://code.claude.com/docs/en/memory#auto-memory): `~/.claude/projects/<project>/memory/`, a `MEMORY.md` index with one file per memory. On by default. | The agent, during sessions | First 200 lines or 25KB of `MEMORY.md` each session; other files on demand | The hub and area indexes, links only, checked by `scripts/provider-memory.mjs` | One machine; shared by the repository's worktrees |
+| Codex | [Memories](https://developers.openai.com/codex/memories): `~/.codex/memories/`, or under `CODEX_HOME`. Off by default. | Codex, in the background from past chats | Summary truncated to about 2,500 tokens ([openai/codex#48679](https://github.com/openai/codex/issues/48679)); `AGENTS.md` chain 32 KiB | Nothing; `AGENTS.md` is the pointer channel, held under 30 KiB by `scripts/agents-md-budget.mjs` | One machine; repository scoping undocumented |
