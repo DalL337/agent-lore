@@ -1,7 +1,8 @@
 # Plan: `lore init`
 
 *Written 2026-10-18 from the owner's rulings in the planning session; each
-ruling below is settled. Status: planned, not started.*
+ruling below is settled. Status (2026-10-18): slices 1–4 merged (PRs #10–#13);
+slice 5 built.*
 
 ## Goal
 
@@ -40,6 +41,31 @@ HUD, and hands off to the owner's agent to fill the board, leaving
 > `core.hooksPath` (husky), hooks are per worktree or shared with other
 > repositories, so LORE leaves them alone and a session in the main
 > checkout, `lore sync` or `lore worktree` sets new worktrees up instead.
+
+> **Addendum (2026-10-18, the hand-off as built):**
+>
+> - **The HUD.** `init` starts it through the repository's launcher, so it
+>   runs from `.lore/runtime/` and not from a passing npx copy. It opens
+>   the tab once, after a run that changed something. `--no-open` and `CI`
+>   skip both the start and the tab; `BROWSER=none` skips only the tab.
+> - **When the hand-off happens.** Only while the board has no cards, the
+>   condition `policies/board.md` §3 starts from. It is offered again on a
+>   later `init` until the board has cards.
+> - **The prompt** is one line:
+>   - Claude: its memory (seed it when empty; when not, report and ask),
+>     then the board (§3), then the provider memory table with the owner.
+>   - Codex: the same without the memory step.
+> - **Launching.** The agent starts with `claude "<prompt>"` or
+>   `codex "<prompt>"` in the terminal, from its command on PATH. On
+>   Windows, npm's `.cmd` shims run through cmd.exe, so the prompt holds
+>   none of the characters it changes. A test passes the prompt through a
+>   shim and gets it back exactly.
+> - **When it can't launch.** Without a terminal (a script, an agent
+>   running `init`) or without the command on PATH, `init` prints the
+>   prompt instead. That covers an editor extension alone: Claude Code's
+>   URI handler (`vscode://anthropic.claude-code/open?prompt=`) has no
+>   folder parameter, so it would open in whichever window takes it. In a
+>   terminal, `--yes` takes the default, which is to start the agent.
 
 ## What the owner sees
 

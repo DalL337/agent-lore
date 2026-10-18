@@ -88,6 +88,62 @@ export function detectAgents(machine: Machine = thisMachine()): Detection[] {
   });
 }
 
+// ── Hand-off ───────────────────────────────────────────────────────────
+
+/**
+ * The first prompt for the default agent once init has run on a repository
+ * with an empty board: seed its memory (Claude only: it knows its own
+ * memory folder, and Codex's memories are Codex's), fill the board
+ * (policies/board.md §3), then the provider memory table, which asks the
+ * agent to confirm its rows with the owner. One line, and free of the
+ * characters cmd.exe treats specially, so it survives an npm .cmd shim.
+ * `cli` runs LORE from where the agent starts.
+ */
+export function handoffPrompt(id: AgentId, cli = 'node .lore/lore.mjs'): string {
+  const steps = [
+    ...(id === 'claude'
+      ? [
+          `Your memory: if your memory folder for this repository has no memories yet, run ${cli} memory seed followed by that folder's path, which shapes it as the hub that lore/policies/memory.md section 0 describes; if it already has memories, tell me what is there and ask me before changing anything.`,
+        ]
+      : []),
+    'The board is empty: fill it with me as lore/policies/board.md section 3 describes.',
+    'Go through the Provider Memory table in lore/LORE.md section 5 with me: check your own row against current documentation, and remove rows for harnesses this repository does not use. Then list the other adaptation slots in that section that are still open.',
+  ];
+  return [
+    'LORE was just installed in this repository, with lore/LORE.md as its entry point. Work through these with me one at a time, and write only what I approve.',
+    ...steps.map((step, i) => `${i + 1}) ${step}`),
+  ].join(' ');
+}
+
+/** Characters cmd.exe acts on even inside double quotes, or that end the line. */
+const CMD_SPECIAL = /["%^&|<>!\r\n]/;
+
+export interface Launch {
+  /** The program, or with `shell` the whole command line. */
+  file: string;
+  args: string[];
+  shell: boolean;
+}
+
+/**
+ * How to start an agent's interactive session in this terminal with a
+ * first prompt (`claude "<prompt>"`, `codex "<prompt>"`): its command on
+ * PATH. npm installs it as a .cmd shim on Windows, which Node runs only
+ * through cmd.exe, so the prompt must have nothing cmd.exe would act on.
+ * An editor extension alone can't be started from here: its URI handler
+ * opens whichever window takes it, not necessarily this repository's.
+ */
+export function agentLaunch(id: AgentId, prompt: string, machine: Machine = thisMachine()): Launch | { reason: string } {
+  const command = PROBES[id].command;
+  const file = onPath(command, machine);
+  if (!file) return { reason: `${command} isn't on PATH` };
+  if (machine.platform === 'win32' && /\.(cmd|bat)$/i.test(file)) {
+    if (CMD_SPECIAL.test(prompt) || CMD_SPECIAL.test(file)) return { reason: `${command} is a cmd.exe script here, and the prompt has characters it would change` };
+    return { file: `"${file}" "${prompt}"`, args: [], shell: true };
+  }
+  return { file, args: [prompt], shell: false };
+}
+
 // ── Hooks ──────────────────────────────────────────────────────────────
 
 export interface HookGroup {
