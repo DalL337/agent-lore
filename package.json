@@ -1,0 +1,37 @@
+{
+  "name": "@dall337/lore",
+  "version": "0.1.0",
+  "description": "LORE — Living Operational Rules & Evidence: a read-and-adapt governance suite for agent-driven development, with a local HUD for its board and journals.",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "lore": "bin/lore.mjs"
+  },
+  "files": [
+    "bin",
+    "suite",
+    "hud/dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DalL337/agent-lore.git"
+  },
+  "scripts": {
+    "build": "vite build --config hud/vite.config.ts && vite build --config hud/vite.config.ts --ssr server/main.ts",
+    "typecheck": "tsc -p hud/tsconfig.json",
+    "test": "node --test \"hud/test/*.test.ts\"",
+    "test:e2e": "npm run build && node hud/test/e2e/ui.e2e.mjs",
+    "hud": "node bin/lore.mjs hud",
+    "demo": "npm run build && node hud/scripts/demo.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@types/node": "24.19.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.2"
+  }
+}

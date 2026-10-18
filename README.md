@@ -113,6 +113,9 @@ the bundled web's format; it does not validate a different provider.
 - **`policies/adversarial-check.md`** — deep tracing of concrete
   guarantees, deliberate counterexamples, and evidence-qualified findings
   (added 2026-10-01).
+- **`policies/board.md`** — the LORE board as the work-status record:
+  keeping it current, bootstrapping an empty one, and the board file's
+  shape (added 2026-10-17).
 - **`policies/reserved/`** — empty scopes that accumulate rules as
   lessons are learned.
 - **`scripts/memory-lint.mjs`** — the suite's first guard: checks
@@ -123,6 +126,16 @@ the bundled web's format; it does not validate a different provider.
 - **`memory/INDEX.md`** — a seeded, empty hub for the optional bundled web.
 - **`gitignore-additions.txt`** — the two ignore rules, as a snippet that
   cannot clobber your `.gitignore` by being copied.
+
+## The HUD
+
+*Added 2026-10-17.* `lore hud` opens a local, private page for one
+repository: the board agents keep current (`policies/board.md`), the
+research journals with their status and policy tags, and an Inbox of open
+PRs, issues, and journals no card tracks yet. Edits agents make to the
+board file show up live. It reads and writes only `<repo>/.lore/` and
+needs Node 20+; GitHub data comes from the `gh` CLI when it is available.
+Details: [`hud/README.md`](hud/README.md).
 
 ## The philosophy in one paragraph
 

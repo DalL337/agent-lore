@@ -14,6 +14,13 @@ place. If this unification stops fitting a project, the owner and agents
 may split the substrates; that is a structural decision recorded in the
 memory hub.
 
+> **Addendum (2026-10-17, owner-directed board):** The LORE board can be
+> configured as the work-status record (AGENTS.md §5,
+> `policies/board.md`). It is not the coordination board ruled out
+> above: it carries no claims. Claims, releases, and handoffs stay at the
+> configured coordination location, and a card may link the record that
+> holds its claim.
+
 ## 0. Configured Coordination
 
 > **Erratum (2026-10-02, owner-directed memory adaptation):** Resolve the

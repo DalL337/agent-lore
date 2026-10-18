@@ -3,3 +3,7 @@
 # would also swallow suite/memory/ (the shipped template hub).
 /memory/
 /.research/
+
+# HUD build output and dev dependencies (package.json at the root).
+/node_modules/
+/hud/dist/

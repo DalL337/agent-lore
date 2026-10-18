@@ -1,0 +1,22 @@
+{
+  // Type-check only (`npm run typecheck`); Vite builds, and Node runs the
+  // tests from source, which is why only erasable TypeScript is allowed and
+  // relative imports carry their .ts extension.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node", "vite/client"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src", "server", "shared", "test", "vite.config.ts"]
+}

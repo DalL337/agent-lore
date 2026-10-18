@@ -65,6 +65,7 @@ execution error.
 | Owner-requested adversarial deep dive; creating or changing an enforcement point or a guarantee about state ownership, lifetime, or ordering | `policies/adversarial-check.md` — trace the guarantee through the system before calling the slice done or opening its PR |
 | Owner-invoked creative mode; exploring an inventive direction, an unusual connection, or an unfinished idea | `policies/creative.md` — develop possibilities with the owner; evaluation begins when requested |
 | More than one agent may touch this repo; starting or ending a session in a shared repo; handing work off | `policies/orchestration.md` (with `policies/memory.md`) |
+| Starting, moving, or finishing a unit of work when the board is the work-status record; filling an empty board | `policies/board.md` |
 | Adding, upgrading, or replacing dependencies, frameworks, or languages; any stack question | `policies/tooling.md` |
 
 A task matching multiple rows loads multiple policies. A code slice that
@@ -157,6 +158,9 @@ early — each is flagged at its site:
   web, also decide ignored vs committed per its §5.
 - **Stale-claim threshold** — `policies/orchestration.md` §3.
 - **Markdown lint stance** — `policies/documentation.md` Rule 6.
+- **Work status** — memory-node ledgers or the LORE board
+  (`policies/board.md`); record the choice in the memory configuration
+  below.
 
 Keep the dispatch table in sync with what actually exists. A row pointing
 at a policy this project deleted is a trap for the next agent.
@@ -176,6 +180,7 @@ the bundled module.
 | Navigation mapping | How broad repository categories lead through increasingly specific nodes to authoritative records; use provider links/categories or a thin index that points into the chosen store. |
 | Scope and access | The repository's namespace or area; which agents can read and write; visibility across sessions, worktrees, and clones. |
 | Coordination location | The same backend when it supports shared, verifiable claims; otherwise a separate shared file or service. |
+| Work status | Where each unit of work's status lives: the web's node ledgers, or the LORE board (`.lore/board.json`, `policies/board.md`), whose cards the nodes then link. |
 | History and checks | The chosen provider's update/retention rules and the checks available for its records. |
 | Fallback | An approved alternate location or how unavailable memory is reported; no silent competing store. |
 

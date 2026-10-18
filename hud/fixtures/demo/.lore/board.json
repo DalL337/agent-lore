@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "columns": [
+    { "id": "backlog", "title": "Backlog", "led": "empty", "hint": "Captured, not sequenced", "role": "intake" },
+    { "id": "next", "title": "Next", "led": "blue", "hint": "Sequenced, ready to start" },
+    { "id": "doing", "title": "In progress", "led": "pulse", "hint": "Active now", "role": "active" },
+    { "id": "review", "title": "Waiting on owner", "led": "amber", "hint": "Reviews, rulings, merges", "role": "review" },
+    { "id": "blocked", "title": "Blocked", "led": "red", "hint": "External dependency", "role": "blocked" },
+    { "id": "done", "title": "Done", "led": "green", "hint": "Merged or shipped", "role": "done" }
+  ],
+  "areas": {
+    "api": "Public API: endpoints, SDK, versioning",
+    "ui": "Web UI",
+    "data": "Storage, indexes, migrations",
+    "ops": "Release, CI, process"
+  },
+  "cards": [
+    { "id": "csv-import", "title": "Bulk import from CSV", "column": "backlog", "area": ["data"], "created": "2026-10-02", "updated": "2026-10-02" },
+    { "id": "contrast-pass", "title": "Dark-mode contrast pass", "column": "backlog", "area": ["ui"], "created": "2026-10-04", "updated": "2026-10-04" },
+    {
+      "id": "rate-limits",
+      "title": "Rate limits on the public API",
+      "column": "next",
+      "area": ["api"],
+      "notes": "Per-token buckets; the decision record has the numbers.",
+      "links": { "docs": ["docs/adrs/004-rate-limits.md"] },
+      "created": "2026-10-06",
+      "updated": "2026-10-11"
+    },
+    {
+      "id": "empty-states",
+      "title": "Empty states for first-run users",
+      "column": "doing",
+      "area": ["ui"],
+      "links": { "journals": ["2026-10-15-empty-states.md"] },
+      "created": "2026-10-15",
+      "updated": "2026-10-15"
+    },
+    {
+      "id": "search-index",
+      "title": "Search index rollout",
+      "column": "review",
+      "area": ["data", "api"],
+      "notes": "Dual writes stay on until the PR merges.",
+      "links": { "journals": ["2026-10-12-search-index.md"], "prs": [14] },
+      "created": "2026-10-12",
+      "updated": "2026-10-14"
+    },
+    {
+      "id": "webhook-retries",
+      "title": "Webhook retries",
+      "column": "blocked",
+      "area": ["api"],
+      "notes": "Waiting on the provider's sandbox keys.",
+      "created": "2026-10-08",
+      "updated": "2026-10-13"
+    },
+    {
+      "id": "retry-writes",
+      "title": "Retry failed writes",
+      "column": "done",
+      "area": ["data"],
+      "links": { "journals": ["2026-10-09-retry-writes.md"], "prs": [9, 11] },
+      "created": "2026-10-09",
+      "updated": "2026-10-11"
+    },
+    {
+      "id": "ci-on-prs",
+      "title": "CI on pull requests",
+      "column": "done",
+      "area": ["ops"],
+      "links": { "prs": [3] },
+      "created": "2026-09-28",
+      "updated": "2026-09-30"
+    }
+  ],
+  "journals": {},
+  "inboxDismissed": []
+}
