@@ -2,7 +2,20 @@
   "name": "@dall337/lore",
   "version": "0.1.0",
   "description": "LORE — Living Operational Rules & Evidence: a read-and-adapt governance suite for agent-driven development, with a local HUD for its board and journals.",
-  "private": true,
+  "keywords": [
+    "agents",
+    "governance",
+    "claude-code",
+    "codex",
+    "kanban",
+    "memory",
+    "policies",
+    "ai-agents"
+  ],
+  "homepage": "https://github.com/DalL337/agent-lore#readme",
+  "bugs": {
+    "url": "https://github.com/DalL337/agent-lore/issues"
+  },
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -20,7 +33,11 @@
     "type": "git",
     "url": "git+https://github.com/DalL337/agent-lore.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
+    "prepack": "npm run build",
     "build": "vite build --config hud/vite.config.ts && vite build --config hud/vite.config.ts --ssr server/main.ts",
     "typecheck": "tsc -p hud/tsconfig.json",
     "test": "node --test \"hud/test/*.test.ts\"",
