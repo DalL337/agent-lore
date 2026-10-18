@@ -23,7 +23,32 @@ export const state = {
   policyFilter: null as string | null,
   /** Card id mid-drag — renders wait until the drop lands. */
   dragging: null as string | null,
+  /** Push narrows the board beside the drawer; overlay covers it. Remembered per browser. */
+  drawerMode: (readPref('drawer-mode') === 'overlay' ? 'overlay' : 'push') as 'push' | 'overlay',
+  /** Columns the owner stacked or dealt out by hand (column id → stacked); the rest follow their role. */
+  stackOverrides: {} as Record<string, boolean>,
 };
+
+/**
+ * Per-viewer conveniences (drawer mode, stacked columns) live in this
+ * browser's storage; a private window or blocked storage just means the
+ * defaults every time.
+ */
+export function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(`lore-hud:${key}`);
+  } catch {
+    return null;
+  }
+}
+
+export function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(`lore-hud:${key}`, value);
+  } catch {
+    // storage unavailable: the choice lasts for this page only
+  }
+}
 
 let renderer: () => void = () => {};
 let pending = false;
@@ -98,6 +123,33 @@ export function cardLooksDone(card: Card): boolean {
   if (role === 'done' || role === 'review') return false;
   const prs = card.links?.prs ?? [];
   return prs.length > 0 && prs.every((n) => pr(n)?.state === 'MERGED');
+}
+
+/**
+ * Is a column stacked (cards as overlapping title strips)? The owner's
+ * choice wins; otherwise the low-attention columns stack: intake and done.
+ */
+export function isStacked(columnId: string): boolean {
+  if (columnId in state.stackOverrides) return state.stackOverrides[columnId];
+  const role = state.board ? roleOf(state.board, columnId) : undefined;
+  return role === 'intake' || role === 'done';
+}
+
+/** Stack overrides are per repository: column ids repeat across boards. */
+export function loadStackOverrides() {
+  try {
+    const raw = readPref(`stacked:${state.meta?.repo ?? ''}`);
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    state.stackOverrides = parsed && typeof parsed === 'object' ? (parsed as Record<string, boolean>) : {};
+  } catch {
+    state.stackOverrides = {};
+  }
+}
+
+export function setStacked(columnId: string, stacked: boolean) {
+  state.stackOverrides = { ...state.stackOverrides, [columnId]: stacked };
+  writePref(`stacked:${state.meta?.repo ?? ''}`, JSON.stringify(state.stackOverrides));
+  rerender();
 }
 
 /** Does a journal declare or mention the policy? */

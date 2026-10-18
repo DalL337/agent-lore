@@ -4,15 +4,15 @@ import type { ColumnRole } from '../shared/types.ts';
 import { loadBoard, loadJournals, loadMeta, loadRepo, setAreaFilter, setPolicyFilter } from './actions.ts';
 import { renderBoard, renderFilterPill } from './board.ts';
 import { ago, h, mount, realDate } from './dom.ts';
-import { openCardEditor } from './drawer.ts';
-import { renderGithub } from './github.ts';
+import { closeDrawer, openCardEditor, openPanel, openPanelName, renderDrawer, togglePanel, type Panel } from './drawer.ts';
 import { renderInbox } from './inbox.ts';
-import { renderJournals } from './journals.ts';
-import { setRenderer, state } from './state.ts';
+import { setRenderer, state, type JournalFilter } from './state.ts';
 
 const REPO_POLL_MS = 120_000;
+const JOURNAL_FILTERS: JournalFilter[] = ['attention', 'open', 'stale', 'concluded', 'closed', 'all'];
 
 const status = h('div', { class: 'status' });
+const nav = h('nav', { class: 'nav', 'aria-label': 'Sections' });
 const refresh = h(
   'button',
   {
@@ -25,35 +25,27 @@ const refresh = h(
   '↻',
 );
 const brandName = h('span', { class: 'brand-name' }, '…');
+const topbar = h(
+  'header',
+  { class: 'topbar' },
+  h(
+    'div',
+    { class: 'brand' },
+    h('span', { class: 'brand-mark', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')),
+    brandName,
+    h('span', { class: 'brand-sub' }, 'LORE HUD'),
+  ),
+  nav,
+  status,
+  refresh,
+);
 const inboxEl = h('div', { id: 'inbox' });
 const filterSlot = h('span', { class: 'filter-slot' });
 const boardEl = h('div', { id: 'board' });
-const journalsEl = h('section', { id: 'journals', class: 'panel' });
-const githubEl = h('div', { id: 'github' });
-const githubStamp = h('span', { class: 'muted small' });
 
 mount(
   document.getElementById('app')!,
-  h(
-    'header',
-    { class: 'topbar' },
-    h(
-      'div',
-      { class: 'brand' },
-      h('span', { class: 'brand-mark', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')),
-      brandName,
-      h('span', { class: 'brand-sub' }, 'LORE HUD'),
-    ),
-    h(
-      'nav',
-      { class: 'nav', 'aria-label': 'Sections' },
-      h('a', { href: '#board-section' }, 'Board'),
-      h('a', { href: '#journals' }, 'Journals'),
-      h('a', { href: '#github-section' }, 'GitHub'),
-    ),
-    status,
-    refresh,
-  ),
+  topbar,
   h(
     'main',
     null,
@@ -86,24 +78,71 @@ mount(
       inboxEl,
       boardEl,
     ),
-    h(
-      'div',
-      { class: 'lower' },
-      journalsEl,
-      h(
-        'section',
-        { id: 'github-section', class: 'panel', 'aria-label': 'GitHub' },
-        h('div', { class: 'panel-head' }, h('h2', null, 'GitHub'), githubStamp),
-        githubEl,
-      ),
-    ),
   ),
 );
 
-function stat(label: string, value: string | number, led?: string, title?: string) {
+// The drawer starts below the top bar, whose height changes as it wraps.
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
+}).observe(topbar);
+
+/** Open the journals panel on one status tab (from a count in the top bar). */
+function openJournalsAt(filter: JournalFilter) {
+  state.journalFilter = filter;
+  openPanel('journals');
+}
+
+function badge(value: number, led?: string, title?: string) {
+  return value > 0
+    ? h('span', { class: 'nav-badge', title }, led ? h('span', { class: 'led', 'data-led': led, 'aria-hidden': 'true' }) : null, String(value))
+    : null;
+}
+
+/** Board · Journals · GitHub: the last two open their drawer, with live counts as a hint of what's inside. */
+function renderNav() {
+  const open = openPanelName();
+  const journalsOpen = state.journals.filter((j) => j.status === 'open').length;
+  const stale = state.journals.filter((j) => j.status === 'stale').length;
+  const prs = state.repo?.prs.filter((p) => p.state === 'OPEN').length ?? 0;
+  const link = (panel: Panel, label: string, ...badges: (HTMLElement | null)[]) =>
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'nav-link',
+        'data-panel': panel,
+        'aria-expanded': String(open === panel),
+        'aria-controls': 'drawer',
+        title: open === panel ? `Close ${label}` : `Open ${label}`,
+        onclick: () => togglePanel(panel),
+      },
+      label,
+      badges,
+    );
+  mount(
+    nav,
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'nav-link',
+        title: 'Back to the board',
+        onclick: () => {
+          closeDrawer();
+          window.scrollTo({ top: 0 });
+        },
+      },
+      'Board',
+    ),
+    link('journals', 'Journals', badge(journalsOpen, 'pulse', `${journalsOpen} open`), badge(stale, 'amber', `${stale} stale`)),
+    link('github', 'GitHub', badge(prs, undefined, `${prs} open PRs`)),
+  );
+}
+
+function stat(label: string, value: string | number, led?: string, title?: string, onclick?: () => void) {
   return h(
-    'span',
-    { class: 'stat', title },
+    onclick ? 'button' : 'span',
+    { class: `stat${onclick ? ' stat-btn' : ''}`, type: onclick ? 'button' : undefined, title, onclick },
     led ? h('span', { class: 'led', 'data-led': led, 'aria-hidden': 'true' }) : null,
     h('span', { class: 'stat-value' }, String(value)),
     h('span', { class: 'stat-label' }, label),
@@ -128,11 +167,11 @@ function renderStatus() {
           .map((c) => stat(c.title.toLowerCase(), board.cards.filter((x) => x.column === c.id).length, c.led))
       : null,
     h('span', { class: 'sep', 'aria-hidden': 'true' }),
-    stat('journals open', j.filter((x) => x.status === 'open').length, 'pulse'),
-    stat('stale', j.filter((x) => x.status === 'stale').length, 'amber', 'Journals not concluded and untouched for over 7 days'),
+    stat('journals open', j.filter((x) => x.status === 'open').length, 'pulse', 'Show the open journals', () => openJournalsAt('open')),
+    stat('stale', j.filter((x) => x.status === 'stale').length, 'amber', 'Journals not concluded and untouched for over 7 days — show them', () => openJournalsAt('stale')),
     h('span', { class: 'sep', 'aria-hidden': 'true' }),
-    repo ? stat('open PRs', repo.prs.filter((p) => p.state === 'OPEN').length) : null,
-    repo ? stat('merged in 7d', mergedWeek, 'green') : null,
+    repo ? stat('open PRs', repo.prs.filter((p) => p.state === 'OPEN').length, undefined, 'Show GitHub', () => openPanel('github')) : null,
+    repo ? stat('merged in 7d', mergedWeek, 'green', 'Show GitHub', () => openPanel('github')) : null,
     git
       ? h(
           'span',
@@ -150,29 +189,24 @@ function renderStatus() {
         )
       : null,
   );
-  githubStamp.textContent = state.repoLoading
-    ? 'asking GitHub…'
-    : repo?.error && !repo.lastGood
-      ? 'unavailable'
-      : repo
-        ? `fetched ${ago(repo.fetchedAt)}`
-        : '';
   refresh.toggleAttribute('data-busy', state.repoLoading);
 }
 
 setRenderer(() => {
+  renderNav();
   renderStatus();
   renderInbox(inboxEl);
   renderFilterPill(filterSlot);
   renderBoard(boardEl);
-  renderJournals(journalsEl);
-  renderGithub(githubEl);
+  renderDrawer();
 });
 
-// ?area= and ?policy= restore the lenses after a refresh.
+// ?area=, ?policy=, ?panel= and ?jf= restore the lenses and the open panel after a refresh.
 const params = new URLSearchParams(location.search);
 state.areaFilter = params.get('area');
 state.policyFilter = params.get('policy');
+const jf = params.get('jf') as JournalFilter | null;
+if (jf && JOURNAL_FILTERS.includes(jf)) state.journalFilter = jf;
 
 // Esc clears a lens — unless the drawer is open: then Esc belongs to the
 // drawer. This listener is registered before the drawer's (which is lazy), so
@@ -187,6 +221,8 @@ void loadMeta();
 void loadBoard();
 void loadJournals();
 void loadRepo();
+const panel = params.get('panel');
+if (panel === 'journals' || panel === 'github') openPanel(panel);
 
 // Live: the server pushes when the board file or a journal changes on disk.
 const events = new EventSource('/api/events');

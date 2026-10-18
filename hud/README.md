@@ -26,11 +26,24 @@ lines for an agent's session start.
 
 ## On the page
 
-- **Board.** Six columns by default. A column's `role` (intake, active,
-  review, blocked, done) tells the HUD where Inbox items land, which
-  column collapses, and which counts the header shows. Drag cards, or
-  Alt+arrow keys on a focused card. Click an area chip to dim everything
-  outside that area; Esc clears it.
+- **Board.** The page is the board. Six columns by default. A column's
+  `role` (intake, active, review, blocked, done) tells the HUD where Inbox
+  items land, which columns stack, and which counts the header shows.
+  Drag cards, or Alt+arrow keys on a focused card. Click an area chip to
+  dim everything outside that area; Esc clears it.
+- **Stacked columns.** Intake and done columns start stacked: each card is
+  a one-line strip (areas and title) that opens in place on hover or
+  keyboard focus. The three-bar button in any column header stacks it or
+  deals it out; the choice is remembered per browser and repository.
+  Dealt-out cards keep their notes to two lines and show three link chips
+  plus a "+N" that names the rest.
+- **Drawer.** *Journals* and *GitHub* in the top bar open their panel in a
+  drawer below the bar (clicking again closes it); the journal and PR
+  counts beside them open the same panels, Journals on the matching tab.
+  A journal or card opened from a panel stacks on top of it, with a back
+  step (Esc). The drawer pushes the board aside or overlays it, chosen in
+  its header and remembered per browser; narrow windows always overlay.
+  `?panel=journals&jf=stale` reopens a panel after a refresh.
 - **Inbox.** Open PRs, active journals, and open issues that no card
   links to. A journal on the board covers the PRs it opened (those opened
   from the day before it started to three weeks after). *Make card*
