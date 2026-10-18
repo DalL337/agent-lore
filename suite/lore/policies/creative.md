@@ -1,6 +1,6 @@
 # Creative Mode Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load when the owner
+Scoped agent-governance procedure (LORE.md §1/§2). Load when the owner
 invokes creative mode or asks to explore an inventive direction, an unusual
 connection, or an unfinished idea. These are starting principles; this
 project's own lessons accumulate here with their provenance.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // provider-memory.mjs — guard for a harness's own memory index
-// (policies/memory.md §0, "Coexist with Provider-Native Memory").
+// (lore/policies/memory.md §0, "Coexist with Provider-Native Memory").
 //
 // Where a provider lets the agent write its always-loaded index (Claude
 // Code's MEMORY.md), LORE requires that index to be a links-only hub over
@@ -31,7 +31,8 @@
 //
 // Topic files, the memories themselves, keep the provider's format; only
 // their reachability is checked. --repo defaults to the current directory,
-// and the policy checks run only when it contains policies/.
+// and the policy checks run only when it holds LORE's policies: lore/policies/,
+// or policies/ in a repository that copied the suite into its root.
 //
 // Zero dependencies. Exit 1 on errors (--strict also fails warnings);
 // hook mode exits 2 on any finding so Claude Code shows it to the agent.
@@ -56,7 +57,7 @@ const HEADING = /^#{1,6}\s/;
 // A bullet that leads with a markdown link, after an optional short badge.
 const LINK_LINE = /^\s*[-*]\s+(?:[^\s[]{1,4}\s+)?\[[^\]]+\]\([^)]+\)/;
 const LINKS = /\]\(([^)\s]+)\)/g;
-const POLICY_REF = /`(policies\/[^`]+\.md)`/;
+const POLICY_REF = /`((?:lore\/)?policies\/[^`]+\.md)`/;
 
 const areaFile = (name) => `area_${name}.md`;
 const titleOf = (name) => name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' ');
@@ -72,9 +73,16 @@ function bodyLines(file) {
   return all;
 }
 
+/** Where the repository keeps LORE's policies: lore/policies/, else a root-level policies/. */
+function policiesBase(repo) {
+  return ['lore/policies', 'policies'].find((d) => existsSync(join(repo, d))) ?? null;
+}
+
 function policies(repo) {
   const out = [];
-  for (const [sub, reserved] of [['policies', false], ['policies/reserved', true]]) {
+  const base = policiesBase(repo);
+  if (!base) return out;
+  for (const [sub, reserved] of [[base, false], [`${base}/reserved`, true]]) {
     const dir = join(repo, sub);
     if (!existsSync(dir)) continue;
     for (const f of readdirSync(dir).sort()) {
@@ -166,7 +174,7 @@ function check(dir, repo, fresh = null) {
   if (!reached.has(OWNER)) {
     errors.push(['E8', HUB, 0, `no owner area: add ${OWNER} and link it from the hub (init does this)`]);
   }
-  if (repo && existsSync(join(repo, 'policies'))) {
+  if (repo && policiesBase(repo)) {
     for (const p of policies(repo)) {
       if (!reached.has(areaFile(p.name))) {
         errors.push(['E8', HUB, 0, `no area for ${p.path}: add ${areaFile(p.name)} and link it from the hub (init does this)`]);
@@ -274,7 +282,7 @@ async function hook() {
   if (result.errors.length === 0 && result.warnings.length === 0) return 0;
   console.error(`provider-memory: ${dir}`);
   report(result);
-  console.error('Fix these now: the index is a links-only hub over areas (policies/memory.md §0).');
+  console.error('Fix these now: the index is a links-only hub over areas (lore/policies/memory.md §0).');
   return 2;
 }
 

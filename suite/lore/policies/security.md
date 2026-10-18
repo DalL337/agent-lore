@@ -1,8 +1,8 @@
 # Security Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load for
+Scoped agent-governance procedure (LORE.md §1/§2). Load for
 security-relevant work: anything creating a new execution or network
-surface, dependency changes (with `policies/tooling.md`), supply-chain
+surface, dependency changes (with `lore/policies/tooling.md`), supply-chain
 features, or audit/review passes.
 
 ## Rule 1 — When a Security Review Is Mandatory
@@ -14,7 +14,7 @@ features, or audit/review passes.
   spawn, or network.
 - Dependencies are added or materially upgraded. (A tooling fast-path
   addition's recorded condition check satisfies this —
-  `policies/tooling.md` §4.1; everything else takes the full review.)
+  `lore/policies/tooling.md` §4.1; everything else takes the full review.)
 - A release or visibility milestone approaches (public flip, external
   beta).
 - External intel lands — a post-mortem, advisory, or incident relevant
@@ -81,5 +81,5 @@ chokepoint carries — including rules added later.** Therefore:
   as a bug upstream, trains users to route around it, and hides the
   loophole class from live verification. Every refusal surfaces at
   whichever layer can show it. Ordering interacts with refusal:
-  `policies/implementation.md` Rule 7 — a chokepoint that can refuse
+  `lore/policies/implementation.md` Rule 7 — a chokepoint that can refuse
   makes any state-first flow a drift trap.

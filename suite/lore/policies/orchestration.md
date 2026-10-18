@@ -1,11 +1,11 @@
 # Orchestration Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load whenever more
+Scoped agent-governance procedure (LORE.md §1/§2). Load whenever more
 than one agent may touch this repository in overlapping time, whenever
 starting or ending a session in a shared repository, and whenever work is
 being split across agents or handed off between them.
 
-**The coordination substrate is the memory web** (`policies/memory.md`).
+**The coordination substrate is the memory web** (`lore/policies/memory.md`).
 Claims live at memory nodes; there is no separate coordination board. One
 substrate serves as both map and ledger: an orchestrating agent assigns
 areas by writing claims at nodes, and a working agent walks to its node
@@ -15,8 +15,8 @@ may split the substrates; that is a structural decision recorded in the
 memory hub.
 
 > **Addendum (2026-10-17, owner-directed board):** The LORE board can be
-> configured as the work-status record (AGENTS.md §5,
-> `policies/board.md`). It is not the coordination board ruled out
+> configured as the work-status record (LORE.md §5,
+> `lore/policies/board.md`). It is not the coordination board ruled out
 > above: it carries no claims. Claims, releases, and handoffs stay at the
 > configured coordination location, and a card may link the record that
 > holds its claim.
@@ -24,7 +24,7 @@ memory hub.
 ## 0. Configured Coordination
 
 > **Erratum (2026-10-02, owner-directed memory adaptation):** Resolve the
-> coordination location in AGENTS.md §5 before using the web-specific
+> coordination location in LORE.md §5 before using the web-specific
 > procedures below. Memory and coordination may share a provider or live
 > in separate places. The earlier single-web description is the bundled
 > default; a configured agent or company memory remains governed by its
@@ -63,7 +63,7 @@ coordination; merely having a memory module does not establish them.
   write claims on behalf of workers, and sequence merges. An orchestrator
   is a convenience, not a requirement; the claim rules below work
   peer-to-peer without one.
-- **Primary agents** — registered in `memory/agents/<platform>.md` under
+- **Primary agents** — registered in `lore/memory/agents/<platform>.md` under
   the identity scheme of memory policy §3: platform-rooted path ids,
   discriminated (by area or session date) only when multiple instances of
   the same platform are live. Claim, work, release — always under the
@@ -71,7 +71,7 @@ coordination; merely having a memory module does not establish them.
 - **Sub-agents** — act under their parent's claim and identity. They never
   claim, never register, and report findings to the parent, who appends to
   the web on their behalf. Sub-agents DO keep their own research journals
-  (`policies/research.md` Rule 1) — a journal is lineage-named work
+  (`lore/policies/research.md` Rule 1) — a journal is lineage-named work
   product, not registration.
 
 ## 2. Claims
@@ -148,7 +148,7 @@ happen at all.
 - **Partition along architecture boundaries, not file lists.** Domains,
   modules, subsystems — seams the codebase already respects. File-list
   partitions leak the moment an interface changes.
-- **One unit of work, one branch, one agent** (`policies/git.md`). Two
+- **One unit of work, one branch, one agent** (`lore/policies/git.md`). Two
   agents on one branch is a merge accident with extra steps.
 - **Cross-claim dependencies get sequenced explicitly.** If B's work needs
   A's merged first, that ordering is appended at the hub or a coordination
@@ -161,7 +161,7 @@ mid-work:
 
 1. Append status to the owning node's ledger: what is done, what remains,
    next actions in order.
-2. Link the research journal (`policies/research.md` — the journal is
+2. Link the research journal (`lore/policies/research.md` — the journal is
    where the detail lives; the node just points).
 3. Release the claim, or annotate it if the same agent expects to resume.
 
@@ -174,11 +174,11 @@ the handoff was defective — codify what was missing as a rule here.
 The web coordinates only agents who can see it.
 
 - **Default assumption: one shared working tree** (or clones on the same
-  machine sharing the `memory/` directory).
+  machine sharing the `lore/memory/` directory).
 - **Separate clones or machines:** the web must be committed or otherwise
-  synced before parallel work starts — see `policies/memory.md` §5. This
+  synced before parallel work starts — see `lore/policies/memory.md` §5. This
   is an owner call. Running parallel agents against invisible-to-each-
   other memory is how two agents claim the same scope in good faith.
-- Branch discipline (`policies/git.md`) is the backstop: even when
+- Branch discipline (`lore/policies/git.md`) is the backstop: even when
   coordination fails, one-unit-one-branch keeps collisions reviewable
   instead of destructive.

@@ -1,6 +1,6 @@
 # Release Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load for release
+Scoped agent-governance procedure (LORE.md §1/§2). Load for release
 work: version bumps, bundling, release builds.
 
 ## Rule 1 — The Version Lives in N Places; Enumerate Them
@@ -33,7 +33,7 @@ decides when it's spent.
 ## Rule 3 — Sequence
 
 Version bumps land **last**: merge code branches first, push docs and
-plans, bump after the release scope is locked (`policies/git.md` §3).
+plans, bump after the release scope is locked (`lore/policies/git.md` §3).
 Release bumps get their own commit.
 
 ## Rule 4 — Artifacts and Their Prerequisites

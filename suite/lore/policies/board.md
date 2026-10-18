@@ -1,7 +1,7 @@
 # Board Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load when the LORE
-board is this repository's work-status record (AGENTS.md §5, memory
+Scoped agent-governance procedure (LORE.md §1/§2). Load when the LORE
+board is this repository's work-status record (LORE.md §5, memory
 configuration) and the task starts, moves, or finishes a unit of work;
 and when the board is empty or missing and the owner wants it filled.
 
@@ -16,14 +16,14 @@ unit of work, in a column that says where the work stands. It is private
 by default: `.lore/` stays out of git unless the owner opts in.
 
 - **It is a status record, not a coordination substrate.** Claims stay at
-  the configured coordination location (`policies/orchestration.md` §0).
+  the configured coordination location (`lore/policies/orchestration.md` §0).
   A card may link the node or record that holds the claim.
 - **It points; it does not explain.** Detail lives in journals, docs,
   decision records, and PRs. A card's notes are a line or two.
 - **When the board is the status record, memory nodes link cards** rather
   than keeping a second status ledger for the same work.
 - **Cards never point into a harness's private memory.** Provider memory
-  may point at card ids (`policies/memory.md` §0); anything another agent
+  may point at card ids (`lore/policies/memory.md` §0); anything another agent
   needs goes on the card, in a journal, or in a doc.
 
 ## 2. Keep It Current
@@ -49,7 +49,7 @@ review, a worktree without `.lore/`) reports the implied changes instead.
 
 When the board is empty or missing and the owner asks to fill it:
 
-1. **Journal first** (`policies/research.md`): the survey is an
+1. **Journal first** (`lore/policies/research.md`): the survey is an
    investigation.
 2. **Read the repository:** README, docs and decision records, open PRs
    and issues (`gh`), recent history and branches, TODO and FIXME

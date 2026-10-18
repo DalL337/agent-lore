@@ -1,0 +1,29 @@
+# LORE — the paths that keep LORE private in a repository.
+#
+# `lore init` writes these into .git/info/exclude (local to this clone,
+# never committed), so installing LORE leaves `git status` clean. Adopting
+# by hand: add the ones you use to .git/info/exclude, or to .gitignore if
+# you want the rules themselves shared.
+#
+# Keep the leading slashes: they anchor each rule to the repository root.
+# Without them, `lore/` would also hide a src/lore/ folder of your own.
+
+# LORE itself: the entry document, policies, scripts, memory template.
+# A team that shares its policies through the repository leaves this out
+# (lore init --commit); the memory web inside it then needs its own call
+# (lore/policies/memory.md §5).
+/lore/
+
+# Private data: the board, settings, the HUD runtime and its log.
+/.lore/
+
+# Research journals: in-tree, never committed (lore/policies/research.md).
+/.research/
+
+# Generated for the agents (only the ones init created in this repository):
+/AGENTS.md
+/CLAUDE.md
+/AGENTS.override.md
+/CLAUDE.local.md
+/.claude/settings.local.json
+/.codex/

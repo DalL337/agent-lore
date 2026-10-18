@@ -1,9 +1,9 @@
 # Implementation Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load when writing or
+Scoped agent-governance procedure (LORE.md §1/§2). Load when writing or
 changing code in any language. These are starting principles distilled
 from real debugging sessions on the ancestor repository, provenance
-stripped (AGENTS.md §3); they apply to any codebase with concurrency,
+stripped (LORE.md §3); they apply to any codebase with concurrency,
 cross-platform targets, external side effects, or stateful UI. Your
 project's own rules accumulate here, dated, with their incidents.
 

@@ -1,6 +1,6 @@
 # Verification Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load when preparing
+Scoped agent-governance procedure (LORE.md §1/§2). Load when preparing
 any PR, completing a milestone or slice, or changing an API or
 architecture boundary.
 
@@ -16,14 +16,14 @@ checks" means. The suite should cover, where the stack supports each:
   so "all tests pass" is a verifiable claim, not a vibe.
 - **A production build** — dev servers hide build-only failures.
 - **Zero-warning compilation** where the toolchain distinguishes
-  warnings — warnings are the floor (`policies/implementation.md`
+  warnings — warnings are the floor (`lore/policies/implementation.md`
   Rule 5).
 
 ```
 # Fill in on adoption, e.g.:
-# node scripts/memory-lint.mjs   — memory web form (ships with the suite)
-# node scripts/provider-memory.mjs check <memory-dir>   — provider memory hub (ships with the suite)
-# node scripts/agents-md-budget.mjs   — AGENTS.md chain under 30 KiB (ships with the suite)
+# node lore/scripts/memory-lint.mjs   — memory web form (ships with the suite)
+# node lore/scripts/provider-memory.mjs check <memory-dir>   — provider memory hub (ships with the suite)
+# node lore/scripts/agents-md-budget.mjs   — AGENTS.md chain under 30 KiB (ships with the suite)
 # npm run check        — guards + build
 # npm run test         — full suite
 # cargo build && cargo test   — zero warnings required
@@ -55,6 +55,6 @@ Read the summary line; run `git status`; every time.
 
 A check that was run but whose output wasn't read verifies nothing. When
 a check fails, the failure is investigated under
-`policies/research.md` discipline if nontrivial — never rerun-until-
+`lore/policies/research.md` discipline if nontrivial — never rerun-until-
 green, never skipped with intent to fix later unless the owner has
 explicitly accepted that debt, dated, in the relevant plan.

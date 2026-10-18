@@ -1,8 +1,8 @@
 # Memory Usage Policy
 
-Scoped agent-governance procedure (AGENTS.md §1/§2). Load on first contact
+Scoped agent-governance procedure (LORE.md §1/§2). Load on first contact
 with the repository and whenever configuring, reading, or writing its
-operational memory. Resolve the chosen entry point from AGENTS.md §5.
+operational memory. Resolve the chosen entry point from LORE.md §5.
 
 ## 0. Configured Memory
 
@@ -46,12 +46,12 @@ agent/company memory cannot expose a usable walk, configure a thin
 navigation index elsewhere that points into that memory and the repository.
 The index supplies routes; the existing records retain their authority and
 content conventions. Record how the route maps to provider references or
-scoped queries in AGENTS.md §5 so another agent can follow it too.
+scoped queries in LORE.md §5 so another agent can follow it too.
 
 ### Select the Existing Home First
 
 Before creating a memory directory or registry, read the memory
-configuration in [AGENTS.md §5](../AGENTS.md#memory-configuration), or the
+configuration in [LORE.md §5](../LORE.md#memory-configuration), or the
 configuration document it points to. Inspect established project and
 company memory instructions. Use the selected system and its repository
 scope. If its entry point already exposes the repository web, an agent can
@@ -63,7 +63,7 @@ When no choice has been made, help the owner record one. The choices are
 the bundled link web, an existing agent/company memory system, or another
 location such as a shared file, document, or service. Identify how agents
 find, read, and update the chosen home. Keep a discoverable pointer in
-AGENTS.md even when the memory itself lives elsewhere.
+LORE.md even when the memory itself lives elsewhere.
 
 An existing company's access, content, history, and retention conventions
 continue to govern its system. Do not replace them with the bundled web's
@@ -94,7 +94,7 @@ with a link or reference from the chosen memory when it supports one.
 Check who can see the chosen records, whether they survive a session, and
 which agents can write them. Personal agent memory can aid its own
 orientation while a separate shared record handles claims and handoffs.
-Record that coordination location in AGENTS.md §5 and follow
+Record that coordination location in LORE.md §5 and follow
 [orchestration policy §0](orchestration.md#0-configured-coordination).
 Do not assume a private memory, unsynced clone, or provider inaccessible to
 another agent is a shared coordination channel.
@@ -140,7 +140,7 @@ task journal, or the repository. The shared layer never depends on a
 private memory for something another agent must know. When a private
 note turns out to matter beyond its harness, promote it: record it in
 the shared layer, or draft it as a rule through the accumulation loop
-(AGENTS.md §3).
+(LORE.md §3).
 
 **LORE writes pointers, nothing more.** Where a provider lets the agent
 write its memory, the agent may record routes into LORE: the web entry
@@ -166,10 +166,10 @@ than the number of memories, and nothing has to be condensed or cut to
 fit.
 
 **Areas follow the dispatch table.** Each policy has an area named for
-it, such as `area_research.md` for `policies/research.md`, and so does
-each reserved scope in `policies/reserved/`, so the hub shows an agent
+it, such as `area_research.md` for `lore/policies/research.md`, and so does
+each reserved scope in `lore/policies/reserved/`, so the hub shows an agent
 every scope before it has rules. A lesson filed in a reserved area is a
-candidate for that scope's first rule (AGENTS.md §3). An owner area
+candidate for that scope's first rule (LORE.md §3). An owner area
 holds who the owner is and how they work, and repository areas are
 added as memories about parts of the code need them. When the dispatch
 table loads a policy, open its area as well; open the owner area on
@@ -181,7 +181,7 @@ hub link is a route; it does not guarantee a read. A rule that has to
 hold in every session belongs in the instruction files the harness
 always loads, or in a policy through the accumulation loop.
 
-**Form is guard-enforced.** `scripts/provider-memory.mjs init` seeds the
+**Form is guard-enforced.** `lore/scripts/provider-memory.mjs init` seeds the
 hub and areas from the policy files and never overwrites a file.
 `check` validates the hub and areas, reachability, link targets, the
 areas' coverage of the policies, and the hub's size against half the
@@ -197,11 +197,11 @@ self-recognition, [orchestration policy §0](orchestration.md#0-configured-coord
 Native memory is usually local to one machine and readable only by its
 own harness, and its scope may be one repository or every project the
 harness touches. Record each harness's location, scope, and LORE's use
-of it in the [provider memory table](../AGENTS.md#provider-memory).
+of it in the [provider memory table](../LORE.md#provider-memory).
 
 ### Apply the Matching Checks
 
-The bundled `scripts/memory-lint.mjs` validates the bundled web's file
+The bundled `lore/scripts/memory-lint.mjs` validates the bundled web's file
 format at its supplied repository root. It does not validate an
 agent-native or external store. The project's standard check suite
 (`verification.md` Rule 1) names the applicable provider checks, if any,
@@ -226,7 +226,7 @@ drifted into being a second copy of the repo, and second copies rot.
 ## 2. Shape — the Web
 
 ```
-memory/
+lore/memory/
   INDEX.md              ← the hub. Every walk starts here.
   agents/
     <agent-id>.md       ← one per primary agent (§3)
@@ -235,7 +235,7 @@ memory/
     <subarea>.md        ← deeper rings: increasingly specific
 ```
 
-- **The hub** (`memory/INDEX.md`) links every first-ring node, the agent
+- **The hub** (`lore/memory/INDEX.md`) links every first-ring node, the agent
   registry, and any structural decisions about memory itself (§6). It
   carries no repo detail of its own.
 - **Area nodes** cover a broad concern — a domain, a subsystem, a
@@ -250,7 +250,7 @@ Each node carries, in order:
 2. A **link table** — where the relevant truth lives.
 3. A **status ledger** — dated entries (§4).
 4. A **claims section** — active and released claims
-   (`policies/orchestration.md`).
+   (`lore/policies/orchestration.md`).
 
 Node granularity follows need, not symmetry. Rings grow when a node's
 ledger gets crowded enough that walkers can't find things — that crowding
@@ -264,7 +264,7 @@ is the signal to split, by appending links to new child nodes.
 > Its "longitudinal ledger" below is the lineage of that identity, not
 > the platform's continuity store. What an agent keeps for its own later
 > use belongs in its provider memory (§0); the state of a piece of work
-> resumes from its node and journal (`policies/orchestration.md` §5).
+> resumes from its node and journal (`lore/policies/orchestration.md` §5).
 > The self-recognition rule below still holds where a harness keeps
 > native memory: a claim is yours only by the exact id registered this
 > session, never because a private memory recalls taking it.
@@ -296,7 +296,7 @@ uniqueness among *live* agents:
   registry files.
 
 **One registry file per platform, not per instance:**
-`memory/agents/<platform>.md`. Sessions are dated appended entries, each
+`lore/memory/agents/<platform>.md`. Sessions are dated appended entries, each
 recording the full id used that session (with any discriminator), the
 model in use, claims taken, journal links, and sub-agents spawned with
 their ids. The platform file is a longitudinal ledger of everything that
@@ -372,17 +372,17 @@ holds. Note that splitting a crowded node into children (§2) is not a
 substitute — splitting copies the crowding into the children. Retirement
 is how dead weight actually leaves the walking path.
 
-**Form is guard-enforced.** `scripts/memory-lint.mjs` checks the
+**Form is guard-enforced.** `lore/scripts/memory-lint.mjs` checks the
 mechanics this section defines — dated ledger lines, stamped strikes,
 well-formed claims and releases — and flags multiple live claims in one
 node. The script is the enforcement of record for the formats it checks
-(AGENTS.md §1); run it per `policies/verification.md`. What it cannot
+(LORE.md §1); run it per `lore/policies/verification.md`. What it cannot
 check is append-only itself: a stateless lint sees form, not history.
 That discipline remains on the agent.
 
 ## 5. Git Status
 
-**Gitignored by default** (`memory/` in `.gitignore`), unless the owner
+**Gitignored by default** (`lore/memory/` in `.gitignore`), unless the owner
 says differently — that call is the owner's, made once and recorded in
 the hub.
 
@@ -390,7 +390,7 @@ The tradeoff to surface when asking: ignored memory is invisible to other
 clones. The web coordinates only agents who can see it. Same working tree,
 no problem. Agents operating from separate clones or machines need the web
 committed (or otherwise synced) before parallel work starts —
-`policies/orchestration.md` §6.
+`lore/policies/orchestration.md` §6.
 
 **Deciding late is the expensive direction.** The ignored→committed flip
 is retroactive and irreversible in one motion: every entry ever written
@@ -410,11 +410,11 @@ ignored rather than a thing to quietly restate.
 
 **Git worktrees are a special trap.** Worktree-per-agent is a common
 parallel-agent pattern, and each worktree is a separate working tree — a
-gitignored `memory/` does NOT propagate between worktrees of the same
+gitignored `lore/memory/` does NOT propagate between worktrees of the same
 repository. Two agents working in sibling worktrees will each see (or
 each create) a private web while believing they share one, which defeats
-every coordination guarantee in `policies/orchestration.md`. Before
-parallel worktree work starts, one of: symlink `memory/` into every
+every coordination guarantee in `lore/policies/orchestration.md`. Before
+parallel worktree work starts, one of: symlink `lore/memory/` into every
 worktree from a single canonical location, commit the web, or don't run
 the agents in parallel. Owner call, recorded in the hub.
 
@@ -445,9 +445,9 @@ convention:
 ## 7. What Memory Is Not
 
 - **Not a research journal.** Investigation state lives in `.research/`
-  per `policies/research.md`; nodes *link* journals.
+  per `lore/policies/research.md`; nodes *link* journals.
 - **Not repo documentation.** ADRs, plans, and briefs live in `docs/` per
-  `policies/documentation.md`; nodes *link* them.
+  `lore/policies/documentation.md`; nodes *link* them.
 - **Not a changelog.** Git history is the changelog.
 - **Not a scratchpad.** Nothing exploratory; the web records what has been
   established and where to find it.
