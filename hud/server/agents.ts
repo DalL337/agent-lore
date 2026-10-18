@@ -106,25 +106,61 @@ export function isLoreHook(hook: unknown): boolean {
   return LORE_COMMAND.test(parts.join(' '));
 }
 
+const PROJECT = '${CLAUDE_PROJECT_DIR}';
+
 /**
  * Claude Code's hooks: the session brief (which also keeps generated files
  * current and starts the HUD), and, once Claude's memory is seeded, the
- * memory guard on every Write or Edit.
+ * memory guard on every Write or Edit. In the main checkout they run from
+ * the project folder; a linked worktree has no .lore/ or lore/scripts/ of
+ * its own, so there `main` gives the main checkout's absolute path.
  */
-export function claudeHooks(memoryGuard: boolean): HookEvents {
-  const dir = '${CLAUDE_PROJECT_DIR}';
+export function claudeHooks(memoryGuard: boolean, main?: string): HookEvents {
+  const base = main ? main.split(path.sep).join('/') : PROJECT;
   return {
     SessionStart: [
       {
         hooks: [
-          { type: 'command', command: 'node', args: [`${dir}/.lore/lore.mjs`, 'session', '--agent', 'claude', '--repo', dir], timeout: 30, statusMessage: 'LORE: board brief' },
+          { type: 'command', command: 'node', args: [`${base}/.lore/lore.mjs`, 'session', '--agent', 'claude', '--repo', PROJECT], timeout: 30, statusMessage: 'LORE: board brief' },
         ],
       },
     ],
     ...(memoryGuard
-      ? { PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command: 'node', args: [`${dir}/lore/scripts/provider-memory.mjs`, 'hook'] }] }] }
+      ? {
+          PostToolUse: [
+            { matcher: 'Write|Edit', hooks: [{ type: 'command', command: 'node', args: [`${base}/lore/scripts/provider-memory.mjs`, 'hook', ...(main ? ['--repo', base] : [])] }] },
+          ],
+        }
       : {}),
   };
+}
+
+/** What a linked worktree's Claude sessions may read and edit in the main checkout: LORE's folders only. */
+export const mainDirectories = (main: string) => ['lore', '.lore', '.research'].map((d) => `${main.split(path.sep).join('/')}/${d}`);
+
+/**
+ * Settings text with `wanted` in permissions.additionalDirectories, and
+ * none of `ours` that isn't wanted. Other entries are the owner's and stay.
+ */
+export function mergeDirectories(text: string, wanted: string[], ours: string[]): Merged {
+  let doc: unknown;
+  try {
+    doc = JSON.parse(text.replace(/^﻿/, ''));
+  } catch (err) {
+    return { error: `not valid JSON (${(err as Error).message})` };
+  }
+  if (!isObject(doc)) return { error: 'not a JSON object' };
+  const before = JSON.stringify(doc);
+  const permissions = isObject(doc.permissions) ? { ...doc.permissions } : {};
+  const listed = Array.isArray(permissions.additionalDirectories) ? permissions.additionalDirectories : [];
+  const kept = listed.filter((d) => !ours.includes(d as string));
+  const dirs = [...kept, ...wanted.filter((d) => !kept.includes(d))];
+  if (dirs.length) permissions.additionalDirectories = dirs;
+  else delete permissions.additionalDirectories;
+  const next: Record<string, unknown> = { ...doc, permissions };
+  if (!Object.keys(permissions).length) delete next.permissions;
+  if (JSON.stringify(next) === before) return { text };
+  return { text: `${JSON.stringify(next, null, 2)}\n` };
 }
 
 /** Codex's hook: the session brief, by absolute path (Codex runs hooks in the session's folder). */

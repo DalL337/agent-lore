@@ -29,7 +29,10 @@ terminal (Ctrl+C stops it).
 - **Worktrees share one board.** LORE's private files (the board, the
   journals, an untracked `lore/` folder) exist only in the main checkout,
   so the HUD resolves them there from any linked worktree; branch and
-  status come from the worktree it was started in.
+  status come from the worktree it was started in. After `lore init`, a
+  git hook gives each new worktree generated files pointing there (never
+  links: on Windows `git worktree remove` follows them and deletes what
+  they point at).
 - **It starts with your agent.** After `lore init`, each Claude Code or
   Codex session starts with a hook that runs `lore session`: it prints the
   brief, starts the HUD in the background if it isn't running (no browser

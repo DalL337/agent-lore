@@ -24,6 +24,23 @@ HUD, and hands off to the owner's agent to fill the board, leaving
 | Memory | **Claude's memory is seeded during the hand-off, not by `init`.** Claude knows its own memory folder (`init` would have to guess it from the path, and drive-letter case alone produces two folders). The bootstrap prompt's first step: if Claude has no memory for this repository, run `lore memory seed <its memory folder>` (the hub of policy areas, policies/memory.md §0); if memory already exists, report what is there and ask the owner before converting it. Codex's generated memories are left alone. |
 | Runtime | (2026-10-17) A per-repository copy in `.lore/runtime/` by default; launchers and hooks resolve local copy → global `lore` → `npx @dall337/lore@<pinned>`; `"runtime"` in `config.json` overrides. |
 
+> **Addendum (2026-10-18, D2 superseded at the owner's choice):** worktrees
+> get no links. On Git for Windows 2.49 a plain `git worktree remove`
+> (with or without `--force`) followed a directory junction and deleted
+> the main checkout's `lore/`; `git clean`, `rmdir /s`, `rm -rf` and
+> PowerShell's `Remove-Item` did not, and true symlinks need Developer
+> Mode. So each worktree gets generated files that point at the main
+> checkout: `lore/LORE.md` as a copy whose `lore/`, `.lore/` and
+> `.research/` paths are absolute to it, its own instruction files from
+> that copy and its branch, and hooks running the main checkout's
+> launcher (Claude's settings also grant those three folders as
+> additional directories). Claude Code did not load an absolute `@` import
+> from outside the project, hence the copy. The `post-checkout` hook stays
+> as D2 describes, joining an owner's shell hook as a marked block; with
+> `core.hooksPath` (husky), hooks are per worktree or shared with other
+> repositories, so LORE leaves them alone and a session in the main
+> checkout, `lore sync` or `lore worktree` sets new worktrees up instead.
+
 ## What the owner sees
 
 ```
@@ -73,7 +90,7 @@ drifted from its source, and the session hooks regenerate it.
 | `CLAUDE.md` or a block in `CLAUDE.local.md` | Claude's import of `@lore/LORE.md` |
 | `.claude/settings.local.json` | Claude Code hooks: `SessionStart` runs `lore brief` (stdout becomes context; well under the 10,000-character cap) and autostarts the HUD; `PostToolUse` runs the provider-memory guard |
 | `.codex/hooks.json` | Codex `SessionStart` hook running `lore brief`; Codex runs it only after the owner trusts it once in `/hooks` (and again after it changes) |
-| `.git/hooks/post-checkout` | The worktree link hook (D2) |
+| `.git/hooks/post-checkout` | The worktree hook (D2, as amended above) |
 | `.git/info/exclude` | The ignore rules, in a marked block |
 
 Claude Code adds `settings.local.json` to the global git excludes only when
@@ -100,8 +117,7 @@ One PR per slice, each tested the way the HUD is.
    HUD autostart; agent detection and the default prompt; `lore connect`;
    `lore memory seed`; filling the provider memory table.
 4. **Worktrees, update, uninstall.** The `post-checkout` hook with
-   chaining (junctions for directories on Windows: symlinks there need
-   Developer Mode); `lore update` (runtime and generated files only);
+   chaining (no links: see the D2 addendum); `lore update` (runtime and generated files only);
    `lore uninstall` (removes exactly what `init` added; tested by init →
    uninstall → the repository is byte-identical to before).
 5. **Hand-off and release.** Open the HUD; offer to launch the default
@@ -116,7 +132,8 @@ One PR per slice, each tested the way the HUD is.
   step can't be removed; `init` explains it at the right moment.
 - **`CLAUDE.local.md` imports** are unconfirmed in the docs (slice 1 checks).
 - **Existing hook managers** must be chained, not replaced (slice 4).
-- **Windows links:** directory junctions for `lore/`; files are copied or
+- **Windows links** (resolved 2026-10-18: no links at all; see the D2
+  addendum). Planned: directory junctions for `lore/`; files are copied or
   regenerated.
 - **Generated-file drift:** `lore check` reports it; the session hooks
   regenerate.

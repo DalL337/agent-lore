@@ -418,6 +418,16 @@ parallel worktree work starts, one of: symlink `lore/memory/` into every
 worktree from a single canonical location, commit the web, or don't run
 the agents in parallel. Owner call, recorded in the hub.
 
+> **Addendum (2026-10-18, found while building `lore init`):** Don't
+> link LORE's folders into worktrees on Windows. There, a directory link
+> can only be a junction (true symlinks need Developer Mode), and
+> `git worktree remove`, with or without `--force`, follows the junction
+> and deletes the main checkout's files. Installed with `lore init`, a
+> worktree instead gets a generated `lore/LORE.md` whose `lore/` paths
+> point at the main checkout's, absolute, so sibling worktrees already
+> share one web there. Without init, point agents at the canonical web by
+> absolute path rather than linking it.
+
 ## 6. Convention Evolution
 
 > **Addendum (2026-10-17, vendor memory has shipped):** Common harnesses
