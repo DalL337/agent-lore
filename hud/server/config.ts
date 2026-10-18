@@ -1,8 +1,14 @@
-// Where the HUD finds things in the repository it is pointed at. Private data
-// lives in <repo>/.lore/; journals and policies default to LORE's layout and
-// can be redirected with <repo>/.lore/config.json:
+// Where the HUD finds things for the repository it is pointed at.
+//
+// Private data (the board, settings) lives in the data folder: <repo>/.lore/
+// by default, or any folder given with --data, which keeps every write out
+// of the repository (trying LORE on a repo without touching it). Journals
+// and policies default to LORE's layout and can be redirected from
+// <data>/config.json:
 //
 //   { "journals": ".research", "policies": "lore/policies" }
+//
+// Relative paths there resolve against the repository root.
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -28,9 +34,18 @@ interface ConfigFile {
 // repository's own source tree.
 const POLICY_DIRS = ['lore/policies', 'policies', 'suite/policies'];
 
-/** Forward-slash, repo-relative form of a path, for display and links. */
-export const rel = (config: HudConfig, full: string) =>
-  path.relative(config.repoRoot, full).split(path.sep).join('/');
+const slashes = (p: string) => p.split(path.sep).join('/');
+const inside = (root: string, full: string) => {
+  const r = path.relative(root, full);
+  return r === '' || (!r.startsWith('..') && !path.isAbsolute(r));
+};
+
+/** Forward-slash, repo-relative form of a path inside the repository. */
+export const rel = (config: HudConfig, full: string) => slashes(path.relative(config.repoRoot, full));
+
+/** A path as the owner should read it: repo-relative inside the repository, absolute outside it. */
+export const display = (config: HudConfig, full: string) =>
+  inside(config.repoRoot, full) ? rel(config, full) : slashes(path.resolve(full));
 
 function gitTopLevel(dir: string): string | null {
   try {
@@ -51,11 +66,11 @@ function readConfigFile(dataDir: string): ConfigFile {
   }
 }
 
-export function resolveConfig(repo: string): HudConfig {
+export function resolveConfig(repo: string, data?: string): HudConfig {
   const start = path.resolve(repo);
   if (!existsSync(start) || !statSync(start).isDirectory()) throw new Error(`not a directory: ${start}`);
   const repoRoot = path.resolve(gitTopLevel(start) ?? start);
-  const dataDir = path.join(repoRoot, '.lore');
+  const dataDir = data ? path.resolve(data) : path.join(repoRoot, '.lore');
   const file = readConfigFile(dataDir);
   const pick = (value: unknown) => (typeof value === 'string' && value.trim() ? path.resolve(repoRoot, value.trim()) : null);
 
@@ -73,6 +88,12 @@ export function resolveConfig(repo: string): HudConfig {
   };
 }
 
+/**
+ * A policy's name from its file: `research.md` → `research`, and a
+ * `-policy` suffix (`persistent-research-policy.md`) is dropped too.
+ */
+export const policyName = (file: string) => path.basename(file, '.md').replace(/-policy$/i, '');
+
 /** The repository's policies, reserved scopes included, from the policies folder. */
 export function listPolicies(config: HudConfig): PolicyRef[] {
   const dir = config.policiesDir;
@@ -82,7 +103,7 @@ export function listPolicies(config: HudConfig): PolicyRef[] {
     if (!existsSync(sub)) continue;
     for (const f of readdirSync(sub).sort()) {
       const full = path.join(sub, f);
-      if (f.endsWith('.md') && statSync(full).isFile()) out.push({ name: f.slice(0, -3), path: rel(config, full), reserved });
+      if (f.endsWith('.md') && statSync(full).isFile()) out.push({ name: policyName(f), path: display(config, full), reserved });
     }
   }
   return out;
@@ -90,11 +111,18 @@ export function listPolicies(config: HudConfig): PolicyRef[] {
 
 /**
  * Would git leave the board file out of commits? true = ignored, false = it
- * would show as untracked, null = not a git repository (or git missing).
+ * would show as untracked, null = not a git repository (or git missing), or
+ * the board lives outside the repository, where git never sees it.
  */
 export function boardIgnored(config: HudConfig): boolean | null {
+  if (!inside(config.repoRoot, config.boardPath)) return null;
   try {
-    execFileSync('git', ['check-ignore', '-q', rel(config, config.boardPath)], { cwd: config.repoRoot, windowsHide: true, stdio: 'ignore' });
+    execFileSync('git', ['check-ignore', '-q', rel(config, config.boardPath)], {
+      cwd: config.repoRoot,
+      windowsHide: true,
+      stdio: 'ignore',
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+    });
     return true;
   } catch (err) {
     return (err as { status?: number }).status === 1 ? false : null;

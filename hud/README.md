@@ -7,21 +7,27 @@ current as work moves (`policies/board.md`); the page follows their edits
 live.
 
 ```
-lore hud [--repo <path>] [--port <n>] [--no-open]
+lore hud [--repo <path>] [--data <dir>] [--port <n>] [--no-open]
 ```
 
 It serves `http://127.0.0.1:5199` (the next free port if that one is
 taken) and opens the browser. `lore brief` prints the same board as a few
 lines for an agent's session start.
 
+`--data <dir>` keeps the board and settings in a folder outside the
+repository instead of `<repo>/.lore/`. The repository is then only read:
+journals, policies, `gh`, and git (with `GIT_OPTIONAL_LOCKS=0`, so not even
+the git index is refreshed). It is a way to try the HUD on a repository
+without adding anything to it.
+
 ## What it reads and writes
 
 | | Where | Notes |
 |---|---|---|
-| Board | `<repo>/.lore/board.json` | Created on first run. Private: keep `/.lore/` out of git (`.git/info/exclude`). |
-| Settings | `<repo>/.lore/config.json` | Optional: `{ "journals": ".research", "policies": "lore/policies" }` |
+| Board | `<repo>/.lore/board.json` (or `<data>/board.json`) | Created on first run. Private: keep `/.lore/` out of git (`.git/info/exclude`). |
+| Settings | `<repo>/.lore/config.json` (or `<data>/config.json`) | Optional: `{ "journals": ".research", "policies": "lore/policies" }`; relative paths resolve against the repository. |
 | Journals | `<repo>/.research/*.md` | Read only; the HUD never edits a journal. |
-| Policies | `lore/policies/`, else `policies/` | Names for the journal policy tags. |
+| Policies | `lore/policies/`, else `policies/` | Names for the journal policy tags; `research-policy.md` reads as `research`. |
 | GitHub | `gh` CLI, if installed and logged in | Open PRs and issues, recent merges, the latest release. Optional. |
 
 ## On the page

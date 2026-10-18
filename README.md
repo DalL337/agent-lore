@@ -160,8 +160,10 @@ the bundled web's format; it does not validate a different provider.
 repository: the board agents keep current (`policies/board.md`), the
 research journals with their status and policy tags, and an Inbox of open
 PRs, issues, and journals no card tracks yet. Edits agents make to the
-board file show up live. It reads and writes only `<repo>/.lore/` and
-needs Node 20+; GitHub data comes from the `gh` CLI when it is available.
+board file show up live. It writes only to `<repo>/.lore/`, or with
+`--data` to a folder outside the repository, which leaves the repository
+untouched. It needs Node 20+; GitHub data comes from the `gh` CLI when it
+is available.
 Details: [`hud/README.md`](hud/README.md).
 
 ## The philosophy in one paragraph

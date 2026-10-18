@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // lore — LORE's command line.
 //
-//   lore hud   [--repo <path>] [--port <n>] [--no-open]   open the HUD for a repository
-//   lore brief [--repo <path>]                            print the board summary for an agent
+//   lore hud   [--repo <path>] [--data <dir>] [--port <n>] [--no-open]
+//   lore brief [--repo <path>] [--data <dir>]
 //
+// --data keeps the board and settings in a folder outside the repository
+// (default <repo>/.lore), so the HUD only reads the repository.
 // The HUD runs from its prebuilt files in hud/dist (npm run build).
 
 import { spawn } from 'node:child_process';
@@ -43,15 +45,17 @@ function openBrowser(url) {
 
 const USAGE = `lore ${version}
 
-  lore hud   [--repo <path>] [--port <n>] [--no-open]   open the HUD for a repository
-  lore brief [--repo <path>]                            print the board summary for an agent`;
+  lore hud   [--repo <path>] [--data <dir>] [--port <n>] [--no-open]   open the HUD for a repository
+  lore brief [--repo <path>] [--data <dir>]                            print the board summary for an agent
+
+  --data <dir>   keep the board and settings outside the repository (default <repo>/.lore)`;
 
 if (command === 'hud') {
   const { startHud } = await loadServer();
   const portText = option('--port');
   const port = portText === undefined ? undefined : Number(portText);
   if (port !== undefined && !(Number.isInteger(port) && port >= 0 && port < 65536)) fail(`--port must be a port number`);
-  const hud = await startHud({ repo: option('--repo') ?? process.cwd(), port, version }).catch((err) => fail(err.message));
+  const hud = await startHud({ repo: option('--repo') ?? process.cwd(), data: option('--data'), port, version }).catch((err) => fail(err.message));
   console.log(`LORE HUD · ${hud.config.repoName} → ${hud.url}`);
   console.log(`  board    ${hud.meta.boardFile}`);
   console.log(`  journals ${hud.meta.journals}`);
@@ -67,7 +71,7 @@ if (command === 'hud') {
   const { brief } = await loadServer();
   // A brief must never block a session: report and exit 0.
   try {
-    console.log(await brief({ repo: option('--repo') ?? process.cwd() }));
+    console.log(await brief({ repo: option('--repo') ?? process.cwd(), data: option('--data') }));
   } catch (err) {
     console.log(`LORE board brief unavailable: ${err.message}`);
   }

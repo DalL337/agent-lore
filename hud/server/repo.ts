@@ -9,12 +9,16 @@ import type { GhItem, GitState, RepoState } from '../shared/types.ts';
 
 const GH_TTL_MS = 60_000;
 
+// Read-only on the repository: without this, `git status` may refresh the
+// index file (and take its lock) in the checkout it is only looking at.
+const READ_ONLY_GIT = { ...process.env, GIT_OPTIONAL_LOCKS: '0' };
+
 function run(cmd: string, args: string[], cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
       cmd,
       args,
-      { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024, windowsHide: true },
+      { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024, windowsHide: true, env: READ_ONLY_GIT },
       (err, stdout, stderr) => {
         if ((err as NodeJS.ErrnoException | null)?.code === 'ENOENT') reject(new Error(`${cmd} is not installed`));
         else if (err) reject(new Error(`${cmd} ${args[0]} ${args[1] ?? ''}: ${(stderr || err.message).trim()}`));

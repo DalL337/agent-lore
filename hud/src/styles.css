@@ -861,20 +861,37 @@ button.area[aria-pressed='true'],
 }
 
 /* ── Stacked columns: cards as overlapping title strips ───────────────── */
-/* Like a dealt-out solitaire column: each card shows its areas and title;
-   hovering or focusing one opens it in place (and lifts it above the next
-   strip), so nothing is hidden from a pointer or the keyboard. */
+/* Like a dealt-out solitaire column: each card shows its areas and title on
+   one line. Focusing a strip, or hovering it for a beat (so a pointer
+   sweeping down the stack doesn't ripple it), opens it in place: its details
+   ease open and the strips below slide down instead of jumping. It lifts
+   above the next strip while open. */
 
 .col-body.is-stacked {
   gap: 0;
 }
 
-/* One line per strip: area chips, then the title. */
+/* Details under the title, on every card. */
+.card-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-fulltitle {
+  display: none;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* One line per strip: area chips, then the title; details below, closed. */
 .card.is-strip {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 6px;
+  gap: 0 6px;
   padding-top: 7px;
   padding-bottom: 8px;
   box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.35);
@@ -888,16 +905,67 @@ button.area[aria-pressed='true'],
   text-overflow: ellipsis;
 }
 
-.card.is-strip > .card-notes,
-.card.is-strip > .card-links,
-.card.is-strip > .hint {
+/* A single grid row eased between 0fr and 1fr: the height animates, so the
+   strips below move smoothly. The timing is deliberately unhurried, so an
+   open strip reads as intended rather than as a flinch:
+   - hover opens only after the pointer rests 350ms (passing over, a shaky
+     hand, or scrolling past does nothing), then slides open over 420ms
+     with the content fading in on the second half;
+   - leaving waits 150ms before closing, so a brief slip off the edge and
+     back doesn't collapse it, then closes over 300ms;
+   - keyboard focus opens at once (tabbing is already deliberate), at the
+     same pace. */
+.card.is-strip > .card-more {
   flex-basis: 100%;
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  /* Closing: from any open state back to this one. */
+  transition:
+    grid-template-rows 300ms cubic-bezier(0.4, 0, 0.2, 1) 150ms,
+    opacity 200ms ease 150ms;
 }
 
-.card.is-strip:hover > .card-title,
-.card.is-strip:focus-visible > .card-title,
-.card.is-strip:focus-within > .card-title {
-  white-space: normal;
+.card.is-strip .card-more-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The gap above the details lives inside the clipped area, so a closed strip adds no height. */
+.card.is-strip .card-more-body {
+  padding-top: 6px;
+}
+
+/* The header line never re-wraps; a title it cut off appears in full in the details. */
+.card.is-strip.is-truncated .card-fulltitle {
+  display: block;
+}
+
+/* Nothing to show (no details, title fits): no gap either, so the strip doesn't twitch. */
+.card.is-strip:not(.is-truncated) .card-more-body:has(> .card-fulltitle:only-child) {
+  padding-top: 0;
+}
+
+.card.is-strip:hover > .card-more,
+.card.is-strip:focus-visible > .card-more,
+.card.is-strip:focus-within > .card-more {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* Opening by hover: wait for the pointer to settle, then slide. */
+.card.is-strip:hover > .card-more {
+  transition:
+    grid-template-rows 420ms cubic-bezier(0.25, 0.8, 0.25, 1) 350ms,
+    opacity 300ms ease 470ms;
+}
+
+/* Opening by keyboard: no wait, same pace. */
+.card.is-strip:focus-visible > .card-more,
+.card.is-strip:focus-within > .card-more {
+  transition:
+    grid-template-rows 420ms cubic-bezier(0.25, 0.8, 0.25, 1),
+    opacity 300ms ease 120ms;
 }
 
 .card.is-strip + .card.is-strip {
@@ -909,34 +977,10 @@ button.area[aria-pressed='true'],
   bottom: 9px;
 }
 
-.card.is-strip > .card-notes,
-.card.is-strip > .card-links,
-.card.is-strip > .hint {
-  display: none;
-}
-
 .card.is-strip:hover,
 .card.is-strip:focus-visible,
 .card.is-strip:focus-within {
   z-index: 2;
-}
-
-.card.is-strip:hover > .card-notes,
-.card.is-strip:focus-visible > .card-notes,
-.card.is-strip:focus-within > .card-notes {
-  display: -webkit-box;
-}
-
-.card.is-strip:hover > .card-links,
-.card.is-strip:focus-visible > .card-links,
-.card.is-strip:focus-within > .card-links {
-  display: flex;
-}
-
-.card.is-strip:hover > .hint,
-.card.is-strip:focus-visible > .hint,
-.card.is-strip:focus-within > .hint {
-  display: block;
 }
 
 /* Three offset bars: the stack toggle's icon; lit while the column is stacked. */

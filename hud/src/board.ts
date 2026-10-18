@@ -168,6 +168,41 @@ function areaChip(a: string) {
   );
 }
 
+/**
+ * Everything under the title, in one wrapper. On a stacked strip the
+ * wrapper's single grid row eases between 0fr and 1fr, so opening a strip
+ * slides the strips below it down instead of jumping them. A strip also
+ * carries its full title in here, shown only when the header line had to
+ * cut it off (see markTruncated), so the header never re-wraps on hover.
+ */
+function cardDetails(card: Card, strip: boolean) {
+  const candidates: (HTMLElement | null)[] = [
+    strip ? h('p', { class: 'card-fulltitle' }, card.title) : null,
+    card.notes ? h('p', { class: 'card-notes' }, card.notes) : null,
+    linksRow(card),
+    cardLooksDone(card) ? h('p', { class: 'hint' }, 'Every linked PR is merged. Move to Done?') : null,
+  ];
+  const parts = candidates.filter((p): p is HTMLElement => p !== null);
+  if (!parts.length) return null;
+  return h('div', { class: 'card-more' }, h('div', { class: 'card-more-inner' }, h('div', { class: 'card-more-body' }, parts)));
+}
+
+/** Strips whose one-line title is cut off get their full title in the opening details. */
+let widthWatched = false;
+function markTruncated(root: HTMLElement) {
+  // Column widths follow the board's width (window size, drawer push).
+  if (!widthWatched) {
+    widthWatched = true;
+    new ResizeObserver(() => markTruncated(root)).observe(root);
+  }
+  requestAnimationFrame(() => {
+    for (const card of root.querySelectorAll<HTMLElement>('.card.is-strip')) {
+      const title = card.querySelector<HTMLElement>('.card-title');
+      if (title) card.classList.toggle('is-truncated', title.scrollWidth > title.clientWidth + 1);
+    }
+  });
+}
+
 function renderCard(card: Card, strip: boolean) {
   const filtered = !!state.areaFilter;
   const el = h(
@@ -187,9 +222,7 @@ function renderCard(card: Card, strip: boolean) {
     },
     card.area?.length ? h('div', { class: 'card-areas' }, card.area.map(areaChip)) : null,
     h('h3', { class: 'card-title' }, card.title),
-    card.notes ? h('p', { class: 'card-notes' }, card.notes) : null,
-    linksRow(card),
-    cardLooksDone(card) ? h('p', { class: 'hint' }, 'Every linked PR is merged. Move to Done?') : null,
+    cardDetails(card, strip),
   );
   el.addEventListener('dragstart', (e) => {
     state.dragging = card.id;
@@ -355,4 +388,5 @@ export function renderBoard(root: HTMLElement) {
     state.board.cards.length === 0 ? welcome() : null,
     h('div', { class: 'board' }, state.board.columns.map(renderColumn)),
   );
+  markTruncated(root);
 }
