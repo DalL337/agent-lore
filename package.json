@@ -24,7 +24,7 @@
     "build": "vite build --config hud/vite.config.ts && vite build --config hud/vite.config.ts --ssr server/main.ts",
     "typecheck": "tsc -p hud/tsconfig.json",
     "test": "node --test \"hud/test/*.test.ts\"",
-    "test:e2e": "npm run build && node hud/test/e2e/ui.e2e.mjs",
+    "test:e2e": "npm run build && node hud/test/e2e/ui.e2e.mjs && node hud/test/e2e/cli.e2e.mjs",
     "hud": "node bin/lore.mjs hud",
     "demo": "npm run build && node hud/scripts/demo.mjs"
   },

@@ -8,19 +8,25 @@ import { columnWithRole } from '../shared/boardOps.ts';
 import { inboxItems } from '../shared/inbox.ts';
 import type { Board, HudMeta } from '../shared/types.ts';
 import { createBoardStore } from './board.ts';
-import { boardIgnored, display, listPolicies, resolveConfig, type HudConfig } from './config.ts';
+import { boardIgnored, defaultPortFor, display, listPolicies, resolveConfig, type HudConfig } from './config.ts';
 import { createHudServer } from './http.ts';
+import { clearInstance, getJson, liveInstance, stopInstance, writeInstance, type HudInstance } from './instance.ts';
 import { createJournalIndex } from './journals.ts';
 import { createRepoState } from './repo.ts';
 
+export { getJson, resolveConfig, type HudConfig, type HudInstance };
+
 export interface StartOptions {
   repo: string;
-  /** Data folder (board, settings); defaults to <repo>/.lore. Outside the repo, the HUD never writes into it. */
+  /** Data folder (board, settings); defaults to <main checkout>/.lore. Outside the repo, the HUD never writes into it. */
   data?: string;
+  /** Exact port (0 = any); otherwise config.json's port, else the repository's stable default, then the next free ones. */
   port?: number;
   version?: string;
   /** Built page; defaults to the client build next to this server build. */
   clientDir?: string | null;
+  /** Record this server in <data>/hud.json so `lore hud` reuses it and `lore hud stop` finds it. */
+  register?: boolean;
 }
 
 export interface RunningHud {
@@ -30,8 +36,18 @@ export interface RunningHud {
   close(): Promise<void>;
 }
 
-const DEFAULT_PORT = 5199;
 const PORT_TRIES = 10;
+
+/** The repository's running HUD, if any (confirmed by asking it). */
+export async function findHud(options: { repo: string; data?: string }): Promise<{ config: HudConfig; live: HudInstance | null }> {
+  const config = resolveConfig(options.repo, options.data);
+  return { config, live: await liveInstance(config) };
+}
+
+/** Stop the repository's running HUD; null when none was running. */
+export async function stopHud(options: { repo: string; data?: string }): Promise<HudInstance | null> {
+  return stopInstance(resolveConfig(options.repo, options.data));
+}
 
 function defaultClientDir(): string | null {
   const here = path.dirname(fileURLToPath(import.meta.url));
@@ -52,6 +68,7 @@ function services(config: HudConfig, version: string) {
     policies: listPolicies(config),
     boardIgnored: boardIgnored(config),
     version,
+    pid: process.pid,
   });
   return { board, journals, meta };
 }
@@ -68,8 +85,9 @@ export async function startHud(options: StartOptions): Promise<RunningHud> {
     watch: { boardPath: config.boardPath, journalsDir: config.journalsDir },
   });
 
-  // A taken port tries the next few (unless one was asked for explicitly: 0 = any).
-  const first = options.port ?? DEFAULT_PORT;
+  // An explicit port is exact (0 = any). Otherwise the configured port, else
+  // the repository's stable default; if taken, the next few.
+  const first = options.port ?? config.port ?? defaultPortFor(config.mainRoot);
   const tries = options.port === undefined ? PORT_TRIES : 1;
   let port = first;
   for (let i = 0; ; i++) {
@@ -89,7 +107,20 @@ export async function startHud(options: StartOptions): Promise<RunningHud> {
   }
   const address = hud.server.address();
   const actual = typeof address === 'object' && address ? address.port : port;
-  return { url: `http://127.0.0.1:${actual}`, config, meta: meta(), close: hud.close };
+  const url = `http://127.0.0.1:${actual}`;
+  const version = options.version ?? 'dev';
+  if (options.register) {
+    writeInstance(config, { pid: process.pid, port: actual, url, version, startedAt: new Date().toISOString(), repo: config.repoName });
+  }
+  return {
+    url,
+    config,
+    meta: meta(),
+    close: async () => {
+      if (options.register) clearInstance(config, process.pid);
+      await hud.close();
+    },
+  };
 }
 
 const MAX_TITLES = 6;
@@ -159,6 +190,10 @@ export async function brief(options: { repo: string; data?: string }): Promise<s
   } catch {
     // The journal summary is a nicety; the board lines above are what matter.
   }
+
+  // Where the owner can see the board: the agent can point them at it, or start it.
+  const live = await liveInstance(config);
+  out.push(live ? `HUD: ${live.url} (running)` : 'HUD: not running — `lore hud` starts it and opens the browser.');
 
   const policy = m.policies.find((p) => p.name === 'board');
   out.push(

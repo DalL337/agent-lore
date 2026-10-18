@@ -1,33 +1,47 @@
 // Where the HUD finds things for the repository it is pointed at.
 //
-// Private data (the board, settings) lives in the data folder: <repo>/.lore/
-// by default, or any folder given with --data, which keeps every write out
-// of the repository (trying LORE on a repo without touching it). Journals
-// and policies default to LORE's layout and can be redirected from
+// LORE's private files (the board, settings, journals, an untracked lore/
+// folder) are gitignored, so they exist only in the main checkout: a linked
+// worktree never gets a copy. Everything LORE-private therefore resolves
+// against the MAIN checkout, and every worktree shares one board. Git and
+// GitHub state come from the working tree the HUD was started in.
+//
+// Private data lives in the data folder: <main>/.lore/ by default, or any
+// folder given with --data, which keeps every write out of the repository.
+// Journals, policies, a display name, and a port can be set in
 // <data>/config.json:
 //
-//   { "journals": ".research", "policies": "lore/policies" }
+//   { "name": "Litria", "journals": ".research", "policies": "lore/policies", "port": 5231 }
 //
-// Relative paths there resolve against the repository root.
+// Relative paths there resolve against the main checkout.
 
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { PolicyRef } from '../shared/types.ts';
 
 export interface HudConfig {
+  /** The working tree the HUD was started in: git and gh run here. */
   repoRoot: string;
+  /** The main checkout: LORE's private files live here. Same as repoRoot outside a linked worktree. */
+  mainRoot: string;
+  /** Shown as the board's title: config "name", else the git remote's repository name, else the folder. */
   repoName: string;
   dataDir: string;
   boardPath: string;
   journalsDir: string;
   /** Policies folder (holding `reserved/`), or null when the repo has none. */
   policiesDir: string | null;
+  /** Port from config.json, if the owner set one. */
+  port: number | null;
 }
 
 interface ConfigFile {
+  name?: unknown;
   journals?: unknown;
   policies?: unknown;
+  port?: unknown;
 }
 
 // LORE's installed layout first, then the copy-into-root layout, then this
@@ -40,19 +54,47 @@ const inside = (root: string, full: string) => {
   return r === '' || (!r.startsWith('..') && !path.isAbsolute(r));
 };
 
-/** Forward-slash, repo-relative form of a path inside the repository. */
-export const rel = (config: HudConfig, full: string) => slashes(path.relative(config.repoRoot, full));
+/** Forward-slash path relative to the main checkout. */
+export const rel = (config: HudConfig, full: string) => slashes(path.relative(config.mainRoot, full));
 
-/** A path as the owner should read it: repo-relative inside the repository, absolute outside it. */
+/** A path as the owner should read it: relative inside the main checkout, absolute outside it. */
 export const display = (config: HudConfig, full: string) =>
-  inside(config.repoRoot, full) ? rel(config, full) : slashes(path.resolve(full));
+  inside(config.mainRoot, full) ? rel(config, full) : slashes(path.resolve(full));
 
-function gitTopLevel(dir: string): string | null {
+/** Read-only git: never takes the index lock or refreshes it. */
+function git(cwd: string, args: string[]): string | null {
   try {
-    return execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd: dir, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
+    return execFileSync('git', args, {
+      cwd,
+      encoding: 'utf8',
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+    }).trim();
   } catch {
     return null;
   }
+}
+
+/** The main checkout of a repository: the first worktree git lists, unless that one is bare. */
+function mainWorktree(repoRoot: string): string {
+  const list = git(repoRoot, ['worktree', 'list', '--porcelain']);
+  const first = list?.split(/\r?\n\r?\n/)[0] ?? '';
+  const dir = /^worktree (.+)$/m.exec(first)?.[1];
+  return dir && !/^bare$/m.test(first) ? path.resolve(dir) : repoRoot;
+}
+
+/** "https://github.com/acme/widgets.git" or "git@github.com:acme/widgets.git" → "widgets". */
+export function repoNameFromUrl(url: string): string | null {
+  const name = url.trim().replace(/[\\/]+$/, '').split(/[\\/:]/).pop()?.replace(/\.git$/i, '');
+  return name || null;
+}
+
+function remoteName(repoRoot: string): string | null {
+  const remotes = git(repoRoot, ['remote'])?.split(/\r?\n/).filter(Boolean) ?? [];
+  const remote = remotes.includes('origin') ? 'origin' : remotes[0];
+  const url = remote ? git(repoRoot, ['remote', 'get-url', remote]) : null;
+  return url ? repoNameFromUrl(url) : null;
 }
 
 function readConfigFile(dataDir: string): ConfigFile {
@@ -69,23 +111,38 @@ function readConfigFile(dataDir: string): ConfigFile {
 export function resolveConfig(repo: string, data?: string): HudConfig {
   const start = path.resolve(repo);
   if (!existsSync(start) || !statSync(start).isDirectory()) throw new Error(`not a directory: ${start}`);
-  const repoRoot = path.resolve(gitTopLevel(start) ?? start);
-  const dataDir = data ? path.resolve(data) : path.join(repoRoot, '.lore');
+  const top = git(start, ['rev-parse', '--show-toplevel']);
+  const repoRoot = path.resolve(top || start);
+  const mainRoot = top ? mainWorktree(repoRoot) : repoRoot;
+  const dataDir = data ? path.resolve(data) : path.join(mainRoot, '.lore');
   const file = readConfigFile(dataDir);
-  const pick = (value: unknown) => (typeof value === 'string' && value.trim() ? path.resolve(repoRoot, value.trim()) : null);
+  const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
+  const pick = (value: unknown) => (text(value) ? path.resolve(mainRoot, text(value)!) : null);
 
   const configuredPolicies = pick(file.policies);
   const policiesDir =
-    configuredPolicies ?? POLICY_DIRS.map((d) => path.join(repoRoot, d)).find((d) => existsSync(d) && statSync(d).isDirectory()) ?? null;
+    configuredPolicies ?? POLICY_DIRS.map((d) => path.join(mainRoot, d)).find((d) => existsSync(d) && statSync(d).isDirectory()) ?? null;
+  const port = Number.isInteger(file.port) && (file.port as number) > 0 && (file.port as number) < 65536 ? (file.port as number) : null;
 
   return {
     repoRoot,
-    repoName: path.basename(repoRoot),
+    mainRoot,
+    repoName: text(file.name) ?? (top ? remoteName(repoRoot) : null) ?? path.basename(mainRoot),
     dataDir,
     boardPath: path.join(dataDir, 'board.json'),
-    journalsDir: pick(file.journals) ?? path.join(repoRoot, '.research'),
+    journalsDir: pick(file.journals) ?? path.join(mainRoot, '.research'),
     policiesDir,
+    port,
   };
+}
+
+/**
+ * A stable default port for one repository, so its address can be
+ * bookmarked: derived from the main checkout's path, in 5200–5999.
+ */
+export function defaultPortFor(mainRoot: string): number {
+  const key = path.resolve(mainRoot).toLowerCase();
+  return 5200 + (parseInt(createHash('sha1').update(key).digest('hex').slice(0, 8), 16) % 800);
 }
 
 /**
@@ -112,13 +169,13 @@ export function listPolicies(config: HudConfig): PolicyRef[] {
 /**
  * Would git leave the board file out of commits? true = ignored, false = it
  * would show as untracked, null = not a git repository (or git missing), or
- * the board lives outside the repository, where git never sees it.
+ * the board lives outside the main checkout, where git never sees it.
  */
 export function boardIgnored(config: HudConfig): boolean | null {
-  if (!inside(config.repoRoot, config.boardPath)) return null;
+  if (!inside(config.mainRoot, config.boardPath)) return null;
   try {
     execFileSync('git', ['check-ignore', '-q', rel(config, config.boardPath)], {
-      cwd: config.repoRoot,
+      cwd: config.mainRoot,
       windowsHide: true,
       stdio: 'ignore',
       env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
