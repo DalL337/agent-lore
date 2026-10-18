@@ -133,21 +133,64 @@ h1, h2, h3 {
 
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
-.nav a {
+/* Board scrolls home; Journals and GitHub open their drawer. */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font: 12px var(--mono);
   color: var(--text-dim);
-  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
   padding: 4px 9px;
   border-radius: 999px;
-  transition: background var(--cm-transition-fast), color var(--cm-transition-fast);
+  cursor: pointer;
+  transition: background var(--cm-transition-fast), color var(--cm-transition-fast), border-color var(--cm-transition-fast);
 }
 
-.nav a:hover {
+.nav-link:hover {
   color: #fff;
   background: rgba(92, 107, 192, 0.25);
+}
+
+.nav-link[aria-expanded='true'] {
+  color: #fff;
+  background: rgba(92, 107, 192, 0.3);
+  border-color: var(--cm-indigo-light);
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 11px var(--mono);
+  color: var(--node-text);
+}
+
+.nav-badge .led {
+  width: 7px;
+  height: 7px;
+}
+
+/* Counts that open what they count. */
+.stat-btn {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 2px 6px;
+  margin: -3px -6px;
+  cursor: pointer;
+}
+
+.stat-btn:hover {
+  border-color: var(--cm-indigo-light);
+  background: rgba(92, 107, 192, 0.18);
 }
 
 .status {
@@ -799,7 +842,7 @@ button.area[aria-pressed='true'],
   font-size: 12.5px;
   color: var(--text-dim);
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: pre-line;
@@ -809,6 +852,114 @@ button.area[aria-pressed='true'],
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+.chip-more {
+  color: var(--text-dim);
+  border-style: dashed;
+  cursor: help;
+}
+
+/* ── Stacked columns: cards as overlapping title strips ───────────────── */
+/* Like a dealt-out solitaire column: each card shows its areas and title;
+   hovering or focusing one opens it in place (and lifts it above the next
+   strip), so nothing is hidden from a pointer or the keyboard. */
+
+.col-body.is-stacked {
+  gap: 0;
+}
+
+/* One line per strip: area chips, then the title. */
+.card.is-strip {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding-top: 7px;
+  padding-bottom: 8px;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.card.is-strip > .card-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card.is-strip > .card-notes,
+.card.is-strip > .card-links,
+.card.is-strip > .hint {
+  flex-basis: 100%;
+}
+
+.card.is-strip:hover > .card-title,
+.card.is-strip:focus-visible > .card-title,
+.card.is-strip:focus-within > .card-title {
+  white-space: normal;
+}
+
+.card.is-strip + .card.is-strip {
+  margin-top: -6px;
+}
+
+.card.is-strip::before {
+  top: 9px;
+  bottom: 9px;
+}
+
+.card.is-strip > .card-notes,
+.card.is-strip > .card-links,
+.card.is-strip > .hint {
+  display: none;
+}
+
+.card.is-strip:hover,
+.card.is-strip:focus-visible,
+.card.is-strip:focus-within {
+  z-index: 2;
+}
+
+.card.is-strip:hover > .card-notes,
+.card.is-strip:focus-visible > .card-notes,
+.card.is-strip:focus-within > .card-notes {
+  display: -webkit-box;
+}
+
+.card.is-strip:hover > .card-links,
+.card.is-strip:focus-visible > .card-links,
+.card.is-strip:focus-within > .card-links {
+  display: flex;
+}
+
+.card.is-strip:hover > .hint,
+.card.is-strip:focus-visible > .hint,
+.card.is-strip:focus-within > .hint {
+  display: block;
+}
+
+/* Three offset bars: the stack toggle's icon; lit while the column is stacked. */
+.stack-icon {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stack-icon i {
+  display: block;
+  width: 11px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.stack-icon i:nth-child(2) { margin-left: 2px; }
+.stack-icon i:nth-child(3) { margin-left: 4px; }
+
+.stack-toggle[aria-pressed='true'] {
+  color: #fff;
+  border-color: rgba(121, 134, 203, 0.5);
 }
 
 .hint {
@@ -839,15 +990,7 @@ button.area[aria-pressed='true'],
   padding: 2px 10px;
 }
 
-/* ── Lower panels ─────────────────────────────────────────────────────── */
-
-.lower {
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
-  gap: 14px;
-  align-items: start;
-  margin-top: 24px;
-}
+/* ── Panels ───────────────────────────────────────────────────────────── */
 
 .panel {
   padding: 14px 16px 16px;
@@ -1103,13 +1246,30 @@ textarea {
 
 /* ── Drawer ───────────────────────────────────────────────────────────── */
 
+/* It starts below the sticky top bar (height measured into --topbar-h), so
+   the nav and counts stay reachable while it is open. Push narrows the page
+   beside it; overlay covers the board's right edge. */
+:root {
+  --drawer-w: min(540px, 100vw);
+}
+
+main {
+  transition: margin-right var(--drawer-transition) ease;
+}
+
+/* Columns keep their width in push mode: the board scrolls sideways rather
+   than squeezing column names into letter stacks. */
+body.drawer-push main {
+  margin-right: var(--drawer-w);
+}
+
 .drawer {
   position: fixed;
-  top: 0;
+  top: var(--topbar-h, 0px);
   right: 0;
   bottom: 0;
   z-index: 20;
-  width: min(620px, 100vw);
+  width: var(--drawer-w);
   display: flex;
   flex-direction: column;
   background: rgba(16, 16, 19, 0.95);
@@ -1127,12 +1287,70 @@ textarea {
   transition: transform var(--drawer-transition) ease;
 }
 
+.drawer[data-mode='push'] {
+  box-shadow: none;
+}
+
 .drawer-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px 12px 18px;
+  padding: 10px 14px 10px 18px;
   border-bottom: 1px solid var(--hairline);
+}
+
+.drawer-back {
+  flex: none;
+  padding: 3px 10px;
+}
+
+/* Push | Overlay */
+.segmented {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.seg {
+  font: 11px var(--mono);
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.seg[aria-pressed='true'] {
+  color: #fff;
+  background: var(--cm-indigo);
+}
+
+.seg:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Panels in the drawer: the journals list and GitHub, at drawer width. */
+.drawer .panel-head {
+  margin-bottom: 10px;
+}
+
+.drawer .search {
+  margin-left: 0;
+  width: 100%;
+}
+
+.drawer .jrow-top {
+  flex-wrap: wrap;
+}
+
+.drawer .jrow-top h3 {
+  order: 3;
+  flex-basis: 100%;
+  white-space: normal;
 }
 
 .drawer-title {
@@ -1367,12 +1585,6 @@ textarea {
 
 /* ── Responsive + motion ──────────────────────────────────────────────── */
 
-@media (max-width: 1100px) {
-  .lower {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 640px) {
   main {
     padding: 14px 16px 48px;
@@ -1387,13 +1599,14 @@ textarea {
     scroll-snap-align: start;
   }
 
-  .nav {
-    display: none;
-  }
-
   .topbar {
     position: static;
     padding: 10px 16px;
+  }
+
+  /* The top bar scrolls away on a phone, so the drawer takes the whole screen. */
+  .drawer {
+    top: 0;
   }
 
   .status {

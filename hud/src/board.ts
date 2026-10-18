@@ -4,9 +4,13 @@ import { moveCard, setAreaFilter, toggleAreaFilter } from './actions.ts';
 import { areaName, ghChip, ledColor } from './chips.ts';
 import { h, mount } from './dom.ts';
 import { openCardEditor, openJournal } from './drawer.ts';
-import { cardLooksDone, flushRender, issue, journal, journalsDir, pr, rerender, state } from './state.ts';
+import { cardLooksDone, flushRender, isStacked, issue, journal, journalsDir, pr, rerender, setStacked, state } from './state.ts';
 
+/** The done column shows this many cards before "Show all" (more when stacked: strips are short). */
 const DONE_PREVIEW = 8;
+const DONE_PREVIEW_STACKED = 15;
+/** Link chips on a card face; the rest fold into "+N" (all of them are in the editor). */
+const LINK_CHIPS = 3;
 
 const shortJournal = (file: string) => {
   const slug = file.replace(/\.md$/, '').replace(/^\d{4}-\d{2}-\d{2}-/, '');
@@ -62,7 +66,18 @@ function linksRow(card: Card) {
   for (const doc of links.docs ?? []) {
     chips.push(h('span', { class: 'chip chip-quiet', title: doc }, doc.split('/').pop() ?? doc));
   }
-  return chips.length ? h('div', { class: 'card-links' }, chips) : null;
+  if (!chips.length) return null;
+  // Keep the card short: a few chips, then a count that names the rest on hover.
+  const shown = chips.length > LINK_CHIPS + 1 ? chips.slice(0, LINK_CHIPS) : chips;
+  const rest = chips.slice(shown.length);
+  return h(
+    'div',
+    { class: 'card-links' },
+    shown,
+    rest.length
+      ? h('span', { class: 'chip chip-more', title: rest.map((c) => c.getAttribute('title') ?? c.textContent).join('\n') }, `+${rest.length}`)
+      : null,
+  );
 }
 
 // ── Drag and drop ────────────────────────────────────────────────────────
@@ -153,12 +168,12 @@ function areaChip(a: string) {
   );
 }
 
-function renderCard(card: Card) {
+function renderCard(card: Card, strip: boolean) {
   const filtered = !!state.areaFilter;
   const el = h(
     'article',
     {
-      class: `card${filtered ? (matchesFilter(card) ? ' is-match' : ' is-dim') : ''}`,
+      class: `card${strip ? ' is-strip' : ''}${filtered ? (matchesFilter(card) ? ' is-match' : ' is-dim') : ''}`,
       tabindex: '0',
       draggable: 'true',
       'data-id': card.id,
@@ -197,13 +212,15 @@ function renderColumn(col: Column) {
   const filter = state.areaFilter;
   const matching = filter ? all.filter(matchesFilter).length : all.length;
   const isDone = roleOf(state.board!, col.id) === 'done';
+  const stacked = isStacked(col.id);
+  const preview = stacked ? DONE_PREVIEW_STACKED : DONE_PREVIEW;
   // While filtering, the done column shows everything: a match must never hide below the fold.
-  const collapsed = isDone && all.length > DONE_PREVIEW && !state.showAllDone && !filter;
-  const shown = collapsed ? all.slice(0, DONE_PREVIEW) : all;
+  const collapsed = isDone && all.length > preview && !state.showAllDone && !filter;
+  const shown = collapsed ? all.slice(0, preview) : all;
   const body = h(
     'div',
-    { class: 'col-body', 'data-column': col.id },
-    shown.map(renderCard),
+    { class: `col-body${stacked ? ' is-stacked' : ''}`, 'data-column': col.id },
+    shown.map((c) => renderCard(c, stacked)),
     all.length === 0 ? h('p', { class: 'col-empty' }, 'Nothing here') : null,
   );
   wireDrop(body, col.id);
@@ -229,6 +246,18 @@ function renderColumn(col: Column) {
         'button',
         {
           type: 'button',
+          class: 'icon-btn stack-toggle',
+          'aria-pressed': String(stacked),
+          title: stacked ? `Deal out ${col.title}: show whole cards` : `Stack ${col.title}: title strips that open on hover or focus`,
+          'aria-label': stacked ? `Deal out ${col.title}` : `Stack ${col.title}`,
+          onclick: () => setStacked(col.id, !stacked),
+        },
+        h('span', { class: 'stack-icon', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')),
+      ),
+      h(
+        'button',
+        {
+          type: 'button',
           class: 'icon-btn',
           title: `Add a card to ${col.title}`,
           'aria-label': `Add a card to ${col.title}`,
@@ -239,7 +268,7 @@ function renderColumn(col: Column) {
     ),
     col.hint ? h('p', { class: 'col-hint' }, col.hint) : null,
     body,
-    isDone && all.length > DONE_PREVIEW && !filter
+    isDone && all.length > preview && !filter
       ? h(
           'button',
           {
@@ -291,7 +320,7 @@ function welcome() {
     h(
       'ul',
       null,
-      h('li', null, h('strong', null, 'Tracked work: '), 'the Inbox above lists open PRs, open issues and active journals. ', h('em', null, 'Make card'), ' turns each into a card.'),
+      h('li', null, h('strong', null, 'Tracked work: '), 'the Inbox above lists open PRs, open issues and active journals. ', h('em', null, 'Make card'), ' turns each into a card. Journals and GitHub open from the bar at the top.'),
       h('li', null, h('strong', null, 'Everything else: '), 'ask your agent to bootstrap the board. It reads the repository, proposes areas and cards, and writes the ones you approve.'),
       h('li', null, h('strong', null, 'By hand: '), h('em', null, 'New card'), ', or the + on any column.'),
     ),

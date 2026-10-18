@@ -1,55 +1,220 @@
-// Right-hand drawer: card editor and journal reader. Non-modal — the board
-// stays live and usable behind it.
+// Right-hand drawer: the Journals and GitHub panels, the journal reader, and
+// the card editor. It is a stack — a panel, then a journal opened from it,
+// then a card opened from that — with a back step, and it starts below the
+// top bar so the nav and counts stay reachable while it is open.
+//
+// Push (the board narrows beside it) or overlay (it covers the board's
+// right edge), chosen in its header and remembered per browser. Narrow
+// windows always overlay: pushing there would leave the board no room.
 
 import type { Card, CardLinks, CardPatch } from '../shared/types.ts';
 import { deleteCard, saveCard, setJournalClosed, toast } from './actions.ts';
 import { api } from './api.ts';
 import { areas, ghChip, parseAreas, policyChips } from './chips.ts';
 import { ago, h, localStamp, mount, type Child } from './dom.ts';
+import { renderGithub } from './github.ts';
+import { renderJournals } from './journals.ts';
 import { renderMarkdown } from './markdown.ts';
-import { cardsForJournal, journal, journalPrs, journalsDir, state } from './state.ts';
+import { cardsForJournal, journal, journalPrs, journalsDir, rerender, state, writePref } from './state.ts';
 
+export type Panel = 'journals' | 'github';
+
+type Entry =
+  | { kind: 'journals' }
+  | { kind: 'github' }
+  | { kind: 'journal'; file: string }
+  | { kind: 'card'; card: Card | null; column?: string };
+
+const PANEL_TITLE: Record<Panel, string> = { journals: 'Journals', github: 'GitHub' };
+/** Below this width the drawer overlays whatever the setting says. */
+const PUSH_MIN_WIDTH = 1200;
+
+const stack: Entry[] = [];
 let drawer: HTMLElement | null = null;
-let titleEl: HTMLElement;
+let headEl: HTMLElement;
 let bodyEl: HTMLElement;
 let returnFocus: HTMLElement | null = null;
+const wide = window.matchMedia(`(min-width: ${PUSH_MIN_WIDTH}px)`);
+
+// The panels are long-lived elements: their search box and scroll position
+// survive moving between a panel and a journal opened from it.
+const panels: Record<Panel, HTMLElement> = {
+  journals: h('div', { class: 'panel-body' }),
+  github: h('div', { class: 'panel-body' }),
+};
+
+const top = () => stack[stack.length - 1];
+const isPanel = (e: Entry | undefined): e is { kind: Panel } => e?.kind === 'journals' || e?.kind === 'github';
+
+/** The panel the drawer is showing at its root, if it is open on one. */
+export const openPanelName = (): Panel | null => (drawer?.classList.contains('open') && isPanel(stack[0]) ? stack[0].kind : null);
 
 function ensure() {
   if (drawer) return;
-  titleEl = h('div', { class: 'drawer-title' });
+  headEl = h('header', { class: 'drawer-head' });
   bodyEl = h('div', { class: 'drawer-body' });
-  drawer = h(
-    'aside',
-    { class: 'drawer', 'aria-hidden': 'true', 'aria-label': 'Details' },
-    h(
-      'header',
-      { class: 'drawer-head' },
-      titleEl,
-      h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Close', title: 'Close (Esc)', onclick: closeDrawer }, '×'),
-    ),
-    bodyEl,
-  );
+  drawer = h('aside', { id: 'drawer', class: 'drawer', 'aria-hidden': 'true', 'aria-label': 'Details' }, headEl, bodyEl);
   document.body.append(drawer);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && drawer?.classList.contains('open')) closeDrawer();
+    if (e.key === 'Escape' && drawer?.classList.contains('open')) {
+      e.preventDefault();
+      back();
+    }
+  });
+  wide.addEventListener('change', () => {
+    layout();
+    if (drawer?.classList.contains('open')) renderHead();
   });
 }
 
-function open(title: Child, ...content: Child[]) {
+/** Push or overlay, as set and as the window allows. */
+function layout() {
+  const open = !!drawer?.classList.contains('open');
+  const push = open && state.drawerMode === 'push' && wide.matches;
+  document.body.classList.toggle('drawer-push', push);
+  drawer?.setAttribute('data-mode', push ? 'push' : 'overlay');
+}
+
+function modeSwitch() {
+  // Show what is in effect: a narrow window overlays whatever the setting says.
+  const effective = wide.matches ? state.drawerMode : 'overlay';
+  const option = (mode: 'push' | 'overlay', label: string, title: string) =>
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'seg',
+        'aria-pressed': String(effective === mode),
+        disabled: !wide.matches,
+        title: wide.matches ? title : 'Push needs a wider window; the drawer overlays here',
+        onclick: () => {
+          state.drawerMode = mode;
+          writePref('drawer-mode', mode);
+          layout();
+          renderHead();
+        },
+      },
+      label,
+    );
+  return h(
+    'span',
+    { class: 'segmented', role: 'group', 'aria-label': 'Drawer placement' },
+    option('push', 'Push', 'Narrow the board beside the drawer; nothing is covered'),
+    option('overlay', 'Overlay', 'Cover the board’s right edge; the board keeps its width'),
+  );
+}
+
+function entryTitle(e: Entry): Child {
+  switch (e.kind) {
+    case 'journals':
+    case 'github':
+      return PANEL_TITLE[e.kind];
+    case 'journal':
+      return h('span', { class: 'mono' }, e.file);
+    case 'card':
+      return e.card ? 'Edit card' : 'New card';
+  }
+}
+
+function backLabel(e: Entry): string {
+  if (isPanel(e)) return PANEL_TITLE[e.kind];
+  if (e.kind === 'journal') return 'Journal';
+  return 'Card';
+}
+
+function renderHead() {
+  const prev = stack[stack.length - 2];
+  mount(
+    headEl,
+    prev
+      ? h('button', { type: 'button', class: 'pill pill-quiet drawer-back', title: 'Back (Esc)', onclick: back }, `← ${backLabel(prev)}`)
+      : null,
+    h('div', { class: 'drawer-title' }, entryTitle(top())),
+    modeSwitch(),
+    h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Close', title: 'Close', onclick: closeDrawer }, '×'),
+  );
+  drawer!.setAttribute('aria-label', typeof entryTitle(top()) === 'string' ? (entryTitle(top()) as string) : 'Journal');
+}
+
+/** Mirror the open panel in the query string so a refresh reopens it. */
+function syncUrl() {
+  const url = new URL(location.href);
+  const panel = openPanelName();
+  if (panel) url.searchParams.set('panel', panel);
+  else url.searchParams.delete('panel');
+  if (panel === 'journals' && state.journalFilter !== 'attention') url.searchParams.set('jf', state.journalFilter);
+  else url.searchParams.delete('jf');
+  history.replaceState(null, '', url);
+}
+
+/** Render whatever is on top of the stack. */
+function show() {
   ensure();
   if (!drawer!.classList.contains('open')) returnFocus = document.activeElement as HTMLElement | null;
-  mount(titleEl, title);
-  mount(bodyEl, ...content);
-  bodyEl.scrollTop = 0;
+  // Visible before rendering: the editor focuses its title, and a hidden
+  // element cannot take focus.
   drawer!.classList.add('open');
   drawer!.setAttribute('aria-hidden', 'false');
+  const entry = top();
+  renderHead();
+  switch (entry.kind) {
+    case 'journals':
+      renderJournals(panels.journals);
+      mount(bodyEl, panels.journals);
+      break;
+    case 'github':
+      renderGithub(panels.github);
+      mount(bodyEl, panels.github);
+      break;
+    case 'journal':
+      void renderReader(entry.file);
+      break;
+    case 'card':
+      renderEditor(entry.card, entry.column);
+      break;
+  }
+  if (!isPanel(entry)) bodyEl.scrollTop = 0;
+  layout();
+  syncUrl();
+  rerender(); // nav and counts reflect the open panel
+}
+
+/** Nav and counts: open a panel at the root, or close it if it is already showing. */
+export function togglePanel(panel: Panel) {
+  if (openPanelName() === panel && stack.length === 1) closeDrawer();
+  else openPanel(panel);
+}
+
+export function openPanel(panel: Panel) {
+  stack.length = 0;
+  stack.push({ kind: panel });
+  show();
+}
+
+/** One step back; closing when the stack runs out. */
+export function back() {
+  stack.pop();
+  if (stack.length) show();
+  else closeDrawer();
 }
 
 export function closeDrawer() {
+  stack.length = 0;
   if (!drawer) return;
   drawer.classList.remove('open');
   drawer.setAttribute('aria-hidden', 'true');
+  layout();
+  syncUrl();
   returnFocus?.focus?.();
+  rerender();
+}
+
+/** Keep an open panel live as the board, journals, and GitHub data change. */
+export function renderDrawer() {
+  const entry = top();
+  if (!drawer?.classList.contains('open') || !isPanel(entry)) return;
+  if (entry.kind === 'journals') renderJournals(panels.journals);
+  else renderGithub(panels.github);
 }
 
 // ── Card editor ──────────────────────────────────────────────────────────
@@ -94,6 +259,15 @@ function field(label: string, control: HTMLElement, hint?: string) {
 }
 
 export function openCardEditor(card: Card | null, column?: string) {
+  if (!state.board) return;
+  const current = top();
+  // Re-opening the card already on top replaces it rather than stacking a copy.
+  if (current?.kind === 'card' && drawer?.classList.contains('open')) stack.pop();
+  stack.push({ kind: 'card', card, column });
+  show();
+}
+
+function renderEditor(card: Card | null, column?: string) {
   const board = state.board;
   if (!board) return;
   const links = card?.links ?? {};
@@ -148,7 +322,7 @@ export function openCardEditor(card: Card | null, column?: string) {
     };
     try {
       await saveCard(payload);
-      closeDrawer();
+      back();
       toast(card ? 'Card saved' : 'Card added');
     } catch (err) {
       error.textContent = err instanceof Error ? err.message : String(err);
@@ -170,7 +344,7 @@ export function openCardEditor(card: Card | null, column?: string) {
             }
             try {
               await deleteCard(card.id);
-              closeDrawer();
+              back();
               toast('Card deleted');
             } catch (err) {
               error.textContent = err instanceof Error ? err.message : String(err);
@@ -218,22 +392,29 @@ export function openCardEditor(card: Card | null, column?: string) {
       'div',
       { class: 'editor-actions' },
       h('button', { type: 'submit', class: 'pill pill-primary' }, card ? 'Save' : 'Add card'),
-      h('button', { type: 'button', class: 'pill', onclick: closeDrawer }, 'Cancel'),
+      h('button', { type: 'button', class: 'pill', onclick: back }, 'Cancel'),
       h('span', { class: 'spacer' }),
       del,
     ),
     card?.updated ? h('p', { class: 'muted small' }, `Created ${card.created ?? '—'} · updated ${card.updated} · id ${card.id}`) : null,
   );
 
-  open(h('span', null, card ? 'Edit card' : 'New card'), form);
+  mount(bodyEl, form);
   title.focus();
 }
 
 // ── Journal reader ───────────────────────────────────────────────────────
 
-export async function openJournal(file: string) {
+export function openJournal(file: string) {
+  const current = top();
+  if (current?.kind === 'journal' && drawer?.classList.contains('open')) stack.pop();
+  stack.push({ kind: 'journal', file });
+  show();
+}
+
+async function renderReader(file: string) {
   const j = journal(file);
-  open(h('span', { class: 'mono' }, file), h('p', { class: 'muted' }, 'Loading…'));
+  mount(bodyEl, h('p', { class: 'muted' }, 'Loading…'));
   let text: string;
   try {
     text = (await api.journal(file)).text;
@@ -241,6 +422,9 @@ export async function openJournal(file: string) {
     mount(bodyEl, h('div', { class: 'banner banner-error' }, err instanceof Error ? err.message : String(err)));
     return;
   }
+  // The reader may have been left while the text loaded.
+  const now = top();
+  if (now?.kind !== 'journal' || now.file !== file) return;
   const cards = cardsForJournal(file);
   const own = j ? journalPrs(j) : [];
   const closable = j && (j.status === 'open' || j.status === 'stale');
@@ -269,10 +453,10 @@ export async function openJournal(file: string) {
           'Copy path',
         ),
         closable
-          ? h('button', { type: 'button', class: 'pill', onclick: async () => { await setJournalClosed(file, true); void openJournal(file); } }, 'Mark closed')
+          ? h('button', { type: 'button', class: 'pill', onclick: async () => { await setJournalClosed(file, true); show(); } }, 'Mark closed')
           : null,
         j?.status === 'closed'
-          ? h('button', { type: 'button', class: 'pill', onclick: async () => { await setJournalClosed(file, false); void openJournal(file); } }, 'Reopen')
+          ? h('button', { type: 'button', class: 'pill', onclick: async () => { await setJournalClosed(file, false); show(); } }, 'Reopen')
           : null,
       ),
     ),

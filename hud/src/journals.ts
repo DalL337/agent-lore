@@ -50,11 +50,20 @@ function build(root: HTMLElement) {
   const note = h('span', { class: 'muted small' });
   const pill = h('span', { class: 'filter-slot' });
   const list = h('div', { class: 'jlist' });
-  mount(root, h('div', { class: 'panel-head' }, h('h2', null, 'Journals'), note, pill), h('div', { class: 'panel-tools' }, filters, search), list);
+  // The drawer's title names the panel; the head carries the folder and the lens.
+  mount(root, h('div', { class: 'panel-head' }, note, pill), h('div', { class: 'panel-tools' }, filters, search), list);
   shell = { root, note, pill, filters, list };
 }
 
 const policyMatch = (j: JournalSummary) => !state.policyFilter || journalUsesPolicy(j, state.policyFilter);
+
+/** The status tab lives in ?jf= beside ?panel=journals, so a refresh keeps both. */
+function syncJournalFilter() {
+  const url = new URL(location.href);
+  if (state.journalFilter !== 'attention') url.searchParams.set('jf', state.journalFilter);
+  else url.searchParams.delete('jf');
+  history.replaceState(null, '', url);
+}
 
 /**
  * "Policy: research · 2 here ✕" — the journals lens, like the board's area
@@ -84,6 +93,7 @@ function renderPolicyPill(root: HTMLElement, visible: JournalSummary[]) {
               class: 'link-btn',
               onclick: () => {
                 state.journalFilter = 'all';
+                syncJournalFilter();
                 rerender();
               },
             },
@@ -219,6 +229,7 @@ export function renderJournals(root: HTMLElement) {
           'aria-selected': String(state.journalFilter === f.id),
           onclick: () => {
             state.journalFilter = f.id;
+            syncJournalFilter();
             rerender();
           },
         },

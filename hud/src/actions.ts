@@ -3,7 +3,7 @@ import type { InboxItem } from '../shared/inbox.ts';
 import type { CardPatch } from '../shared/types.ts';
 import { api } from './api.ts';
 import { h, todayIso } from './dom.ts';
-import { rerender, state } from './state.ts';
+import { loadStackOverrides, rerender, state } from './state.ts';
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
@@ -23,6 +23,7 @@ export async function loadMeta() {
   try {
     state.meta = await api.meta();
     document.title = `${state.meta.repo} · LORE HUD`;
+    loadStackOverrides();
   } catch (err) {
     toast(`HUD: ${message(err)}`, 'error');
   }
