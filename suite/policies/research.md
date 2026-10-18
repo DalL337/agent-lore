@@ -103,6 +103,13 @@ Log · Evidence · Current Findings · Remaining Questions · Next Actions ·
 Final Conclusions. The report presented to the owner derives from the
 journal.
 
+> **Addendum (2026-10-17, owner-directed policy tags):** Near the top,
+> a journal names the policies loaded for its task on one line:
+> `Policies: research, implementation`. The dispatch table already makes
+> a missed policy an execution error (AGENTS.md §2.2); this line makes
+> the dispatch auditable. The HUD shows declared policies as solid tags
+> and policies a journal only mentions as dotted ones.
+
 ## Rule 10 — The Journal Is the Source of Truth
 
 Conversation context is temporary; the journal is persistent. If they
