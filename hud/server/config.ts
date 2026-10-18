@@ -61,8 +61,8 @@ export const rel = (config: HudConfig, full: string) => slashes(path.relative(co
 export const display = (config: HudConfig, full: string) =>
   inside(config.mainRoot, full) ? rel(config, full) : slashes(path.resolve(full));
 
-/** Read-only git: never takes the index lock or refreshes it. */
-function git(cwd: string, args: string[]): string | null {
+/** Read-only git: never takes the index lock or refreshes it. Null when git fails. */
+export function git(cwd: string, args: string[]): string | null {
   try {
     return execFileSync('git', args, {
       cwd,
@@ -77,7 +77,7 @@ function git(cwd: string, args: string[]): string | null {
 }
 
 /** The main checkout of a repository: the first worktree git lists, unless that one is bare. */
-function mainWorktree(repoRoot: string): string {
+export function mainWorktree(repoRoot: string): string {
   const list = git(repoRoot, ['worktree', 'list', '--porcelain']);
   const first = list?.split(/\r?\n\r?\n/)[0] ?? '';
   const dir = /^worktree (.+)$/m.exec(first)?.[1];
