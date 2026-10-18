@@ -1,11 +1,16 @@
-# Publishes @dall337/lore to npm when a GitHub Release is published.
+# Stages @dall337/lore on npm when a GitHub Release is published. Nothing
+# goes live until the owner approves it.
 #
-# No stored token: npm trusted publishing (OIDC) authorizes this workflow,
-# and npm attaches a provenance attestation automatically. One-time setup on
-# npmjs.com, after the first (manual) publish: the package's Settings →
-# Trusted Publisher → GitHub Actions, user DalL337, repository agent-lore,
-# workflow publish.yml. Then set publishing access to "Require two-factor
-# authentication and disallow tokens".
+# - No stored token: npm trusted publishing (OIDC) authorizes this workflow.
+#   Setup on npmjs.com: the package's Settings → Trusted Publisher → GitHub
+#   Actions, user DalL337, repository agent-lore, workflow publish.yml, with
+#   "Allow npm publish" and "Allow npm dist-tag" left unchecked, so this
+#   workflow can only stage.
+# - Approval: npmjs.com → the package → Staged Packages → review → Approve
+#   (2FA), or `npm stage approve <stage-id>` from a terminal (2FA). Only then
+#   is the version published.
+#
+# Staging needs npm 11.15+ and Node 22.14+.
 name: publish
 
 on:
@@ -17,7 +22,7 @@ permissions:
   id-token: write
 
 jobs:
-  publish:
+  stage:
     runs-on: ubuntu-latest
     steps:
       # TODO: pin to commit SHAs rather than mutable tags before release.
@@ -26,6 +31,9 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+
+      - name: npm with staged publishing
+        run: npm install -g npm@11.21.0 && npm --version
 
       - name: The release tag matches package.json
         run: |
@@ -37,5 +45,6 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      # prepack builds the HUD into the package.
-      - run: npm publish
+      # prepack builds the HUD into the package. This stages it; the owner's
+      # approval on npmjs.com (with 2FA) publishes it.
+      - run: npm stage publish
