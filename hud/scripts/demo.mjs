@@ -2,7 +2,7 @@
 // The copy lives in the temp folder, outside this git checkout, so the HUD
 // treats it as its own repository; one journal is aged so a stale one shows.
 
-import { cp, mkdtemp, rm, utimes } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, rm, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,10 @@ const { startHud } = await import(new URL('../dist/server/main.js', import.meta.
 
 const repo = await mkdtemp(path.join(tmpdir(), 'lore-demo-'));
 await cp(path.join(root, 'hud/fixtures/demo'), repo, { recursive: true });
+// On Windows, cp keeps each file's modified time, so the journals would age
+// with this checkout. Start them all fresh; then age the stale one.
+const now = new Date();
+for (const f of await readdir(path.join(repo, '.research'))) await utimes(path.join(repo, '.research', f), now, now);
 const old = new Date(Date.now() - 30 * 86_400_000);
 await utimes(path.join(repo, '.research/2026-09-20-cache-eviction.md'), old, old);
 
