@@ -90,3 +90,10 @@ The conversation may also remain an exploration. When the owner wants to
 retain a direction, capture it in an appropriate brief or proposal under
 the [documentation policy](documentation.md). Preserve its open questions
 and distinguish possibilities from decisions.
+
+> **Addendum (2026-11-02, owner-directed handoff):** When the owner wants
+> a direction made real — demonstrated, decided, and built — the
+> [innovate policy](innovate.md) takes it from here, starting at its §3:
+> the owner's choice stands in for a suggestion. Creative mode explores;
+> innovation decides. A direction the owner only wants to keep is
+> captured as above.
