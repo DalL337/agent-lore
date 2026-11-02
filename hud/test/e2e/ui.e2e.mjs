@@ -8,7 +8,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -53,6 +53,10 @@ const { startHud } = await import(pathToFileURL(built).href);
 
 const demo = await mkdtemp(path.join(tmpdir(), 'lore-e2e-demo-'));
 await cp(path.join(root, 'hud/fixtures/demo'), demo, { recursive: true });
+// On Windows, cp keeps each file's modified time, so the journals would age
+// with this checkout. Start them all fresh.
+const now = new Date();
+for (const f of await readdir(path.join(demo, '.research'))) await utimes(path.join(demo, '.research', f), now, now);
 // One journal untouched for a month, so the stale views have something in them.
 const aged = new Date(Date.now() - 30 * 86_400_000);
 await utimes(path.join(demo, '.research/2026-09-20-cache-eviction.md'), aged, aged);
