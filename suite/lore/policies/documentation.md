@@ -16,6 +16,8 @@ don't blend scopes.
 | RFC / PRD | `docs/rfcs/`, `docs/prds/` | Early-shape proposals and product requirements. When an ADR supersedes parts of one, add a dated supersession note to the old doc — never silently rewrite it. |
 | Tooling register | `docs/TOOLING.md` | The stack and its rationale (`lore/policies/tooling.md` §2). |
 | Research journal | `.research/<date>-<task>.md` (gitignored) | Investigation state per `lore/policies/research.md`. Never a home for repo-facing content. |
+| Innovation record | `.lore/innovation/<date>-<topic>.md` (private) | One innovation from suggestion to decision per `lore/policies/innovate.md`; on approval, its brief. |
+| UI feedback log | `.lore/ui-feedback.md` (private) | The owner's reactions to the interface in testing, per `lore/policies/ui-ux.md`. Rules earned from it live in that policy. |
 | Memory | Entry point configured in LORE.md §5; bundled default is `lore/memory/**` (gitignored) | Operational records per `lore/policies/memory.md` §0; canonical repo-facing docs stay in their documented homes. |
 
 Adapt homes and naming to the project's layout on adoption — then keep
@@ -24,6 +26,12 @@ this table true.
 > **Addendum (2026-10-02, configurable memory):** The memory row points
 > to the configured provider, including existing agent or company memory.
 > Its own content conventions apply; the bundled folder is optional.
+
+> **Addendum (2026-11-02, owner-directed private records):** Innovation
+> records and the UI feedback log are internal: they live under `.lore/`,
+> which stays out of git, until the owner sanctions one public. An
+> approved innovation's brief is its record; its ADR is committed like
+> any other.
 
 ## Rule 2 — Amend, Never Rewrite
 
@@ -36,6 +44,14 @@ ADR skeleton (house format): `# ADR-NNN: Title` → `## Status` (ledger) →
 `## Date` → `## Context` → `## Decision` (numbered subsections) →
 `## Consequences` (positive / costs) → `## Alternatives Considered` →
 `## Scope Notes` → optional `## Implementation Follow-ups`.
+
+> **Addendum (2026-11-02, internal briefs):** An ADR whose brief is
+> internal — an innovation record under `.lore/` — must stand on its own.
+> Its Context, Decision, and Alternatives Considered are complete for a
+> reader who will never see the brief. Name the brief as internal
+> (`Design brief: internal innovation record, <date>-<topic>`) rather
+> than linking it; a link into an excluded path is dead in every other
+> clone.
 
 ## Rule 3 — Pointers Over Restatement
 

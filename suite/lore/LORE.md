@@ -57,6 +57,7 @@ execution error.
 | First contact with this repo; configuring, reading, or writing repository memory | `lore/policies/memory.md` — resolve the configured web entry point (§5), then walk the relevant rings; bootstrap the bundled files only when selected |
 | Research, investigation, debugging, architecture discovery, repository exploration, documentation review, root-cause analysis | `lore/policies/research.md` — **before the first tool call** (journal-first) |
 | Writing or changing code (any language) | `lore/policies/implementation.md` |
+| Building or changing a graphical user interface — screens, components, styling, motion; the owner reacting to an interface in testing | `lore/policies/ui-ux.md` — start from what the project has installed; record the owner's reactions in `.lore/ui-feedback.md` |
 | Branching, committing, pushing, opening PRs | `lore/policies/git.md` |
 | Preparing any PR, completing a milestone/slice, changing an API or architecture boundary | `lore/policies/verification.md` |
 | Creating or updating repo documents (ADRs, plans, briefs, PRDs, notes) | `lore/policies/documentation.md` |
@@ -64,6 +65,7 @@ execution error.
 | Security-relevant work: new execution/network surface, supply-chain features, audit passes | `lore/policies/security.md` |
 | Owner-requested adversarial deep dive; creating or changing an enforcement point or a guarantee about state ownership, lifetime, or ordering | `lore/policies/adversarial-check.md` — trace the guarantee through the system before calling the slice done or opening its PR |
 | Owner-invoked creative mode; exploring an inventive direction, an unusual connection, or an unfinished idea | `lore/policies/creative.md` — develop possibilities with the owner; evaluation begins when requested |
+| Suggesting an innovation; demonstrating or deciding one; a creative direction the owner wants made real | `lore/policies/innovate.md` — ground it in the owner's feedback; a suggestion never derails the task in progress |
 | More than one agent may touch this repo; starting or ending a session in a shared repo; handing work off | `lore/policies/orchestration.md` (with `lore/policies/memory.md`) |
 | Starting, moving, or finishing a unit of work when the board is the work-status record; filling an empty board | `lore/policies/board.md` |
 | Adding, upgrading, or replacing dependencies, frameworks, or languages; any stack question | `lore/policies/tooling.md` |
@@ -151,6 +153,17 @@ config and agent memory, never in these files.
 > never the generated copies. References to "LORE.md" mean this document;
 > `AGENTS.md` means the agents' file itself.
 
+> **Addendum (2026-11-02, owner-directed policy expansion):** Added
+> `lore/policies/ui-ux.md` and `lore/policies/innovate.md`. UI/UX starts
+> from the interface stack the project has installed and learns from the
+> owner's reactions in testing, successes as well as failures. Innovate
+> takes an idea, whether an agent's suggestion or a creative direction,
+> through a localhost demo the owner can use to the owner's decision.
+> Agents may suggest innovations unprompted; a suggestion never derails
+> the task in progress. The feedback log and innovation records stay
+> private under `.lore/` unless the owner makes them public; an approved
+> innovation's ADR is committed.
+
 ## 4. Reserved Scopes
 
 Empty policy files exist for scopes with no rules yet:
@@ -189,6 +202,8 @@ early — each is flagged at its site:
   native memory in the provider memory table below.
 - **Stale-claim threshold** — `lore/policies/orchestration.md` §3.
 - **Markdown lint stance** — `lore/policies/documentation.md` Rule 6.
+- **UI inventory** — `lore/policies/ui-ux.md` Rule 1, filled at the first
+  interface task rather than at adoption.
 - **Work status** — memory-node ledgers or the LORE board
   (`lore/policies/board.md`); record the choice in the memory configuration
   below.
